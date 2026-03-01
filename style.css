@@ -1,0 +1,274 @@
+/* ==========================================================================
+   Shopazon Plugin Styles
+   ========================================================================== */
+
+/* Animations */
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    25% { transform: translateX(-4px); }
+    75% { transform: translateX(4px); }
+}
+
+/* 1. Navigation Menu Cart Item 
+   -------------------------------------------------------------------------- */
+.sz-menu-cart {
+    display: inline-flex !important;
+    align-items: center !important;
+}
+
+.sz-menu-cart a {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    font-weight: 600 !important;
+    transition: color 0.2s ease-in-out;
+    cursor: pointer;
+    text-decoration: none !important;
+}
+
+.sz-menu-cart i {
+    font-size: 1.2rem;
+    line-height: 1;
+}
+
+.sz-menu-cart i.sz-shake {
+    animation: shake 0.5s ease-in-out;
+}
+
+#cart-count {
+    background: var(--sz-accent-color, #007cba); /* WordPress Blue */
+    color: #fff;
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 10px;
+    min-width: 18px;
+    text-align: center;
+    line-height: 1;
+}
+
+/* 1a. Floating Cart for Non-Divi Themes
+   -------------------------------------------------------------------------- */
+#sz-floating-cart {
+    position: fixed;
+    bottom: 30px;
+    right: 30px;
+    z-index: 9999;
+    background: #fff;
+    border-radius: 50px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+    transition: all 0.3s ease;
+}
+
+#sz-floating-cart a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 14px 20px;
+    color: #999;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+#sz-floating-cart:hover {
+    box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
+    transform: translateY(-2px);
+}
+
+#sz-floating-cart i {
+    font-size: 1.3rem;
+    line-height: 1;
+}
+
+#sz-floating-cart i.sz-shake {
+    animation: shake 0.5s ease-in-out;
+}
+
+/* 2. Product Grid & Wrapper 
+   -------------------------------------------------------------------------- */
+.sz-shop-wrapper {
+    margin: 2rem 0;
+    font-family: system-ui, -apple-system, sans-serif;
+}
+
+.sz-product-card {
+    border: 1px solid #e5e5e5 !important;
+    border-radius: 12px !important;
+    overflow: hidden;
+    height: 100%;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    background: #ffffff;
+    padding: 20px;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+}
+
+.sz-product-card:hover {
+    box-shadow: 0 10px 20px rgba(0,0,0,0.08);
+}
+
+.sz-product-card img {
+    max-height: 180px;
+    width: auto;
+    max-width: 100%;
+    object-fit: contain;
+    margin: 0 auto 15px;
+    display: block;
+    height: auto !important;
+}
+
+.sz-card-title {
+    font-size: 1.1rem !important;
+    font-weight: 700 !important;
+    margin: 0 0 10px 0 !important;
+    line-height: 1.4 !important;
+    color: #2c3338;
+}
+
+.sz-card-text {
+    font-size: 0.85rem;
+    color: #646970;
+    margin-bottom: 20px;
+    line-height: 1.5;
+}
+
+.sz-price {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: #1d2327;
+    margin-top: auto; /* Pushes price to bottom of card */
+    margin-bottom: 15px;
+}
+
+.sz-product-card .btn-primary {
+    background-color: var(--sz-accent-color, #007cba) !important;
+    border-color: var(--sz-accent-color, #007cba) !important;
+    border-radius: 6px !important;
+    font-weight: 600 !important;
+    padding: 10px !important;
+}
+
+.sz-product-card .btn-primary:hover {
+    filter: brightness(0.85);
+}
+
+/* 3. Cart Modal Customization 
+   -------------------------------------------------------------------------- */
+/* Ensure the modal appears above theme headers/footers */
+.modal {
+    z-index: 99999 !important;
+}
+
+.modal-backdrop {
+    z-index: 99998 !important;
+}
+
+.sz-remove-item {
+    cursor: pointer;
+    color: #d63638;
+    font-size: 1.1rem;
+    padding-left: 10px;
+    transition: color 0.2s;
+}
+
+.sz-remove-item:hover {
+    color: #b32d2e;
+}
+
+#grand-total {
+    color: #1d2327;
+    letter-spacing: -0.01em;
+}
+
+/* 4. Responsive Fixes
+   -------------------------------------------------------------------------- */
+@media (max-width: 768px) {
+    .sz-product-card {
+        margin-bottom: 20px;
+    }
+    
+    .sz-menu-cart a {
+        gap: 4px !important;
+    }
+    
+    .sz-menu-cart a span {
+        font-size: 0.9rem;
+    }
+    
+    #sz-top-cart {
+        padding: 0 8px !important;
+        white-space: nowrap;
+    }
+}
+
+@media (max-width: 576px) {
+    .sz-menu-cart a {
+        flex-wrap: nowrap !important;
+        gap: 2px !important;
+    }
+    
+    .sz-menu-cart a span {
+        font-size: 0.8rem;
+        display: none;
+    }
+    
+    #sz-top-cart {
+        padding: 0 4px !important;
+    }
+    
+    #sz-floating-cart {
+        bottom: 20px;
+        right: 20px;
+    }
+    
+    #sz-floating-cart a {
+        padding: 16px 20px;
+        gap: 6px;
+    }
+    
+    #sz-floating-cart a span:not(#cart-count) {
+        display: none;
+    }
+    
+    #sz-floating-cart i {
+        font-size: 1.5rem;
+    }
+    
+    #cart-count {
+        font-size: 0.65rem;
+        padding: 1px 4px;
+        min-width: 16px;
+        display: inline-block !important;
+    }
+}
+
+/* 9. Hover Link Card
+   -------------------------------------------------------------------------- */
+.sz-hover-card {
+    background: white;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    animation: slideUp 0.2s ease-out;
+}
+
+/* 9. Divi Overrides
+   -------------------------------------------------------------------------- */
+.entry-content tr td,
+.entry-content table:not(.variations){
+    border: 0 !important;
+}
