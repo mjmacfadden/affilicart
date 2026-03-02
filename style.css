@@ -2,6 +2,11 @@
    Affilicart Plugin Styles
    ========================================================================== */
 
+/* Preserve scrollbar space so layout doesn't shift */
+html {
+    scrollbar-gutter: stable;
+}
+
 /* Animations */
 @keyframes slideUp {
     from {
@@ -68,6 +73,8 @@
     border-radius: 50px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
     transition: all 0.3s ease;
+    width: fit-content;
+    height: fit-content;
 }
 
 #ac-floating-cart a {

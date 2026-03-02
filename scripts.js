@@ -1,4 +1,9 @@
 (function() {
+    // Prevent browser scroll restoration
+    if ('scrollRestoration' in window.history) {
+        window.history.scrollRestoration = 'manual';
+    }
+    
     // 1. Get dynamic data from WordPress Settings
     const products = affilicart_data.products;
     const ASSOCIATE_TAG = affilicart_data.associate_tag;
@@ -119,66 +124,8 @@
         document.body.appendChild(lightbox);
     };
 
-    // 2. Render Products to the Grid
-    function displayProducts() {
-        const productList = document.getElementById('product-list');
-        if (!productList) return;
-
-        // Handle single-product or comma-separated IDs [affilicart_grid id="123"] or [affilicart_grid id="123,456,789"]
-        const singleId = productList.getAttribute('data-single-id');
-        const showImage = productList.getAttribute('data-show-image') !== 'no';
-        const showTitle = productList.getAttribute('data-show-title') !== 'no';
-        const showDescription = productList.getAttribute('data-show-description') !== 'no';
-        const showPrice = productList.getAttribute('data-show-price') !== 'no';
-        const showAmazonLink = productList.getAttribute('data-show-amazon-link') === 'yes';
-        
-        let displayArray = products;
-        if (singleId && singleId !== "") {
-            const ids = singleId.split(',').map(id => id.trim());
-            // Preserve the order specified in the shortcode
-            displayArray = ids.map(id => products.find(p => p.id.toString() === id)).filter(p => p);
-        }
-
-        if (displayArray.length === 0) {
-            productList.innerHTML = '<div class="col-12 text-center text-muted">No products found.</div>';
-            return;
-        }
-
-        productList.innerHTML = displayArray.map(product => `
-            <div class="col-md-4 mb-4">
-                <div class="ac-product-card">
-                    ${showImage ? `<img src="${product.image || ''}" alt="${product.name}" class="ac-product-image" style="${LIGHTBOX_ENABLED ? 'cursor: pointer;' : ''}">` : ''}
-                    ${showTitle ? `<h5 class="ac-card-title">${product.name}</h5>` : ''}
-                    ${showDescription ? `<p class="ac-card-text">${product.description}</p>` : ''}
-                    ${showPrice ? `<div class="ac-price"><span>${product.price.startsWith('$') ? '' : '$'}${product.price}</span> <i class="bi bi-info-circle" style="font-size: 12px; color: #999; cursor: help;"></i></div>` : ''}
-                    <button class="btn btn-primary w-100 ac-grid-btn" onclick="addToCart(${product.id}, false)">
-                        Add to Cart
-                    </button>
-                    ${showAmazonLink ? `<a href="https://www.amazon.com/dp/${product.asin.trim()}?tag=${ASSOCIATE_TAG}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary w-100 mt-2" style="font-size: 12px;"><i class="bi bi-box-arrow-up-right"></i> View on Amazon</a>` : ''}
-                </div>
-            </div>
-        `).join('');
-        
-        // Add lightbox to product images (only if enabled)
-        if (LIGHTBOX_ENABLED) {
-            document.querySelectorAll('.ac-product-image').forEach(img => {
-                img.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    // Get the full-size image from the product data
-                    const productCard = this.closest('.ac-product-card');
-                    const productName = productCard.querySelector('.ac-card-title')?.textContent || this.alt;
-                    
-                    // Find the product in the data to get the full-size image
-                    const productImg = this.getAttribute('src');
-                    const product = products.find(p => p.image === productImg);
-                    const fullImageUrl = product?.image_full || productImg;
-                    
-                    openImageLightbox(fullImageUrl, productName);
-                });
-            });
-        }
-        
-        // Add feedback handler to grid buttons
+    // 2. Attach click handlers to grid buttons
+    function initGridButtons() {
         document.querySelectorAll('.ac-grid-btn').forEach(btn => {
             btn.addEventListener('click', function(e) {
                 const originalText = this.textContent;
@@ -237,7 +184,7 @@
                         <div style="font-weight: 600; margin-bottom: 8px; font-size: 14px;">${product.name}</div>
                         ${product.price ? `<div style="font-size: 13px; color: #666; margin-bottom: 10px;"><span>${product.price.startsWith('$') ? '' : '$'}${product.price}</span> <i class="bi bi-info-circle" style="font-size: 12px; color: #999; cursor: help;"></i></div>` : ''}
                         <button class="btn btn-primary btn-sm w-100" onclick="addToCart(${product.id}, false)" style="background-color: var(--ac-accent-color, #007cba); border-color: var(--ac-accent-color, #007cba); font-size: 12px; margin-bottom: ${showAmazonLink ? '6px' : '0'};">Add to Cart</button>
-                        ${showAmazonLink ? `<a href="https://www.amazon.com/dp/${product.asin.trim()}?tag=${ASSOCIATE_TAG}" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary btn-sm w-100" style="font-size: 11px; padding: 5px; color: #666; border-color: #ddd;"><i class="bi bi-box-arrow-up-right"></i> Amazon</a>` : ''}
+                        ${showAmazonLink ? `<div style="text-align: center; margin-top: 8px;"><a href="https://www.amazon.com/dp/${product.asin.trim()}?tag=${ASSOCIATE_TAG}" target="_blank" rel="noopener noreferrer" style="font-size: 11px; color: #666; text-decoration: none;"><i class="bi bi-box-arrow-up-right"></i> Amazon</a></div>` : ''}
                     </div>
                 `;
                 document.body.appendChild(card);
@@ -246,9 +193,9 @@
                 const rect = linkElement.getBoundingClientRect();
                 const cardHeight = card.offsetHeight;
                 card.style.position = 'fixed';
-                card.style.top = (rect.top - cardHeight - 8) + 'px';
+                card.style.top = (rect.top - (cardHeight - rect.height) / 2) + 'px';
                 card.style.left = rect.left + 'px';
-                card.style.zIndex = '9999';
+                card.style.zIndex = '99999';
                 
                 // Add feedback to the button
                 const cartBtn = card.querySelector('.btn-primary');
@@ -447,7 +394,7 @@
                     line-height: 1.2;
                     white-space: normal;
                     max-width: 200px;
-                    z-index: 10000;
+                    z-index: 999999;
                     pointer-events: none;
                     box-shadow: 0 2px 8px rgba(0,0,0,0.2);
                 `;
@@ -490,8 +437,11 @@
     }
 
     // 8. Initialization & Checkout Logic
-    document.addEventListener('DOMContentLoaded', () => {
-        displayProducts();
+    function initAffiliCart() {
+        // Scroll to top on page load
+        window.scrollTo(0, 0);
+        
+        initGridButtons();
         displayButton();
         displayHoverLinks();
         initPriceTooltips();
@@ -516,14 +466,18 @@
                 
                 // Position the floating cart based on setting
                 const floatingCart = document.getElementById('ac-floating-cart');
-                let positionStyles = 'position: fixed; z-index: 9999; width: 60px; height: 60px; display: flex; align-items: center; justify-content: center;';
+                let positionStyles = 'position: fixed; z-index: 999999;';
+                
+                // Check if WordPress admin bar is present
+                const adminBar = document.getElementById('wpadminbar');
+                const adminBarHeight = adminBar ? 32 : 0;
                 
                 switch (CART_POSITION) {
                     case 'top-left':
-                        positionStyles += ' top: 20px; left: 20px;';
+                        positionStyles += ` top: ${20 + adminBarHeight}px; left: 20px;`;
                         break;
                     case 'top-right':
-                        positionStyles += ' top: 20px; right: 20px;';
+                        positionStyles += ` top: ${20 + adminBarHeight}px; right: 20px;`;
                         break;
                     case 'bottom-left':
                         positionStyles += ' bottom: 20px; left: 20px;';
@@ -598,6 +552,14 @@
                 window.open(url, '_blank');
             });
         }
+    }
+    
+    // Run on DOMContentLoaded
+    document.addEventListener('DOMContentLoaded', initAffiliCart);
+    
+    // Also run on load event to catch cases where DOMContentLoaded already fired
+    window.addEventListener('load', () => {
+        window.scrollTo(0, 0);
     });
 
     // Re-initialize tooltips whenever DOM changes
@@ -607,5 +569,18 @@
     
     document.addEventListener('DOMContentLoaded', () => {
         observer.observe(document.body, { childList: true, subtree: true });
+        
+        // Add lightbox to single product image if on single product page
+        const singleProductContainer = document.getElementById('ac-single-product');
+        if (singleProductContainer && LIGHTBOX_ENABLED) {
+            const productImg = singleProductContainer.querySelector('.product-image');
+            if (productImg) {
+                productImg.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    const productName = singleProductContainer.querySelector('.product-title')?.textContent || productImg.alt;
+                    openImageLightbox(productImg.getAttribute('src'), productName);
+                });
+            }
+        }
     });
 })();

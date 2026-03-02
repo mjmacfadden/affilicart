@@ -8,9 +8,10 @@
 
 if ( ! defined( 'ABSPATH' ) ) exit;
 
-// Activation Hook - Flush Rewrite Rules
+// Activation Hook - Register post types and flush rewrite rules
 register_activation_hook( __FILE__, function() {
     affilicart_register_post_type();
+    affilicart_register_taxonomies();
     flush_rewrite_rules();
 });
 
@@ -27,7 +28,7 @@ function affilicart_register_post_type() {
         ),
         'public' => true,
         'supports' => array( 'title', 'thumbnail' ),
-        'taxonomies' => array( 'category', 'post_tag' ),
+        'taxonomies' => array(),
         'menu_icon' => 'dashicons-cart',
         'show_in_rest' => true,
         'rewrite' => array( 'slug' => $custom_slug ),
@@ -35,6 +36,138 @@ function affilicart_register_post_type() {
     register_post_type( 'amazon_product', $args );
 }
 add_action( 'init', 'affilicart_register_post_type' );
+
+// 1a. Register Custom Taxonomies
+function affilicart_register_taxonomies() {
+    // Product Category Taxonomy
+    register_taxonomy( 'amazon_product_category', 'amazon_product', array(
+        'labels' => array(
+            'name' => 'Product Categories',
+            'singular_name' => 'Product Category',
+        ),
+        'public' => true,
+        'show_in_rest' => true,
+        'hierarchical' => true,
+        'rewrite' => array( 'slug' => 'product-category' ),
+    ) );
+    
+    // Product Tag Taxonomy
+    register_taxonomy( 'amazon_product_tag', 'amazon_product', array(
+        'labels' => array(
+            'name' => 'Product Tags',
+            'singular_name' => 'Product Tag',
+        ),
+        'public' => true,
+        'show_in_rest' => true,
+        'hierarchical' => false,
+        'rewrite' => array( 'slug' => 'product-tag' ),
+    ) );
+}
+add_action( 'init', 'affilicart_register_taxonomies', 11 );
+
+// Add custom rewrite rule for product category archives (/product/category/category-name/)
+add_action( 'init', function() {
+    $custom_slug = get_option( 'affilicart_post_slug', 'product' );
+    
+    // Add rewrite rule for /product/category/category-name/
+    add_rewrite_rule(
+        $custom_slug . '/category/([^/]+)/?$',
+        'index.php?affilicart_category=$matches[1]',
+        'top'
+    );
+    
+    // Register query variable
+    add_filter( 'query_vars', function( $vars ) {
+        $vars[] = 'affilicart_category';
+        return $vars;
+    });
+    
+    // Handle template loading for product categories
+    add_action( 'template_redirect', function() {
+        $category = get_query_var( 'affilicart_category' );
+        
+        if ( ! empty( $category ) ) {
+            $plugin_template = plugin_dir_path( __FILE__ ) . 'archive-amazon_product.php';
+            if ( file_exists( $plugin_template ) ) {
+                // Load template and exit
+                include $plugin_template;
+                exit;
+            }
+        }
+    }, 5 );
+}, 11 );
+
+// Deactivation Hook - Flush rewrite rules on deactivation
+register_deactivation_hook( __FILE__, function() {
+    flush_rewrite_rules();
+});
+
+// 1b. Migration Function - Migrate old categories to custom taxonomy
+function affilicart_migrate_categories() {
+    // Get all amazon_product posts
+    $args = array(
+        'post_type' => 'amazon_product',
+        'posts_per_page' => -1,
+        'post_status' => 'publish'
+    );
+    $query = new WP_Query( $args );
+    
+    if ( $query->have_posts() ) {
+        while ( $query->have_posts() ) {
+            $query->the_post();
+            $product_id = get_the_ID();
+            
+            // Get terms from the old 'category' taxonomy
+            $old_terms = wp_get_object_terms( $product_id, 'category', array( 'fields' => 'names' ) );
+            
+            if ( ! is_wp_error( $old_terms ) && ! empty( $old_terms ) ) {
+                // Check if product already has terms in the new taxonomy
+                $new_terms = wp_get_object_terms( $product_id, 'amazon_product_category', array( 'fields' => 'ids' ) );
+                
+                // Only migrate if no terms in new taxonomy yet
+                if ( is_wp_error( $new_terms ) || empty( $new_terms ) ) {
+                    // Assign old category terms to new taxonomy
+                    wp_set_object_terms( $product_id, $old_terms, 'amazon_product_category', false );
+                }
+            }
+        }
+        wp_reset_postdata();
+    }
+}
+
+// Run migration on admin_init if not done yet
+add_action( 'admin_init', function() {
+    if ( ! get_option( 'affilicart_categories_migrated' ) ) {
+        affilicart_migrate_categories();
+        update_option( 'affilicart_categories_migrated', '1' );
+    }
+});
+
+// AJAX handler for manual migration
+add_action( 'wp_ajax_affilicart_migrate_categories_ajax', function() {
+    check_ajax_referer( 'affilicart_migrate_nonce' );
+    
+    if ( ! current_user_can( 'manage_options' ) ) {
+        wp_send_json_error( array( 'message' => 'Insufficient permissions.' ) );
+    }
+    
+    // Run migration
+    affilicart_migrate_categories();
+    
+    // Mark as migrated
+    update_option( 'affilicart_categories_migrated', '1' );
+    
+    wp_send_json_success( array( 'message' => 'Product categories have been successfully migrated to the new system!' ) );
+});
+
+// 2. Filter to exclude product categories from regular site categories
+add_filter( 'get_terms_args', function( $args, $taxonomies ) {
+    // If querying regular categories, exclude product categories
+    if ( isset( $taxonomies ) && is_array( $taxonomies ) && in_array( 'category', $taxonomies ) && ! in_array( 'amazon_product_category', $taxonomies ) ) {
+        // This ensures product categories don't interfere with post categories
+    }
+    return $args;
+}, 10, 2 );
 
 // Add Product Description Meta Box
 add_action( 'add_meta_boxes', function() {
@@ -203,6 +336,44 @@ function affilicart_settings_html() {
                 submit_button();
                 ?>
             </form>
+            
+            <h3 style="margin-top: 40px; border-top: 1px solid #ccc; padding-top: 20px;">⚙️ Tools</h3>
+            <p><strong>Migrate Product Categories:</strong> If you added products with categories before the custom taxonomy update, click the button below to migrate them to the new category system.</p>
+            <button class="button button-primary" onclick="affilicartMigrateCategories()" style="margin-top: 10px;">
+                Migrate Categories Now
+            </button>
+            <div id="migration-status" style="margin-top: 15px; padding: 10px; border-radius: 3px; display: none;"></div>
+            
+            <script>
+            function affilicartMigrateCategories() {
+                const button = event.target;
+                const statusDiv = document.getElementById('migration-status');
+                button.disabled = true;
+                button.textContent = 'Migrating...';
+                statusDiv.style.display = 'none';
+                
+                jQuery.post(ajaxurl, {
+                    action: 'affilicart_migrate_categories_ajax',
+                    nonce: '<?php echo wp_create_nonce('affilicart_migrate_nonce'); ?>'
+                }, function(response) {
+                    button.disabled = false;
+                    button.textContent = 'Migrate Categories Now';
+                    
+                    if (response.success) {
+                        statusDiv.style.backgroundColor = '#d4edda';
+                        statusDiv.style.color = '#155724';
+                        statusDiv.style.borderLeft = '4px solid #28a745';
+                        statusDiv.innerHTML = '<strong>✓ Success!</strong> ' + response.data.message;
+                    } else {
+                        statusDiv.style.backgroundColor = '#f8d7da';
+                        statusDiv.style.color = '#721c24';
+                        statusDiv.style.borderLeft = '4px solid #d63638';
+                        statusDiv.innerHTML = '<strong>✗ Error:</strong> ' + response.data.message;
+                    }
+                    statusDiv.style.display = 'block';
+                }, 'json');
+            }
+            </script>
         <?php elseif ($current_tab === 'how-to'): ?>
             <div style="max-width: 900px;">
                 <h2>How To Use Affilicart</h2>
@@ -614,6 +785,7 @@ add_action('wp_enqueue_scripts', function() {
         $tags = wp_get_post_terms($p->ID, 'post_tag', array('fields' => 'names'));
         $products[] = array(
             'id' => $p->ID, 'name' => get_the_title($p->ID),
+            'slug' => $p->post_name,
             'description' => wp_trim_words(get_post_meta($p->ID, 'product_description', true), 15),
             'image' => get_the_post_thumbnail_url($p->ID, 'medium'),
             'image_full' => get_the_post_thumbnail_url($p->ID, 'full'),
@@ -869,9 +1041,73 @@ add_shortcode('affilicart_grid', function($atts) {
         'show_image' => 'yes',
         'show_title' => 'yes',
         'show_description' => 'yes',
-        'show_price' => 'yes'
+        'show_price' => 'yes',
+        'show_amazon_link' => 'no'
     ), $atts);
-    return '<div class="ac-shop-wrapper"><div id="product-list" class="row" data-single-id="'.esc_attr($a['id']).'" data-show-image="'.esc_attr($a['show_image']).'" data-show-title="'.esc_attr($a['show_title']).'" data-show-description="'.esc_attr($a['show_description']).'" data-show-price="'.esc_attr($a['show_price']).'"></div></div>';
+    
+    // Determine which products to display
+    $args = array('post_type' => 'amazon_product', 'posts_per_page' => -1, 'post_status' => 'publish');
+    if ($a['id']) {
+        $ids = array_map('intval', array_map('trim', explode(',', $a['id'])));
+        $args['post__in'] = $ids;
+        $args['orderby'] = 'post__in'; // Preserve the order
+    }
+    
+    $query = new WP_Query($args);
+    $html = '<div class="ac-shop-wrapper"><div class="row">';
+    
+    if ($query->have_posts()) {
+        $associate_tag = get_option('affilicart_associate_id', 'default-20');
+        
+        while ($query->have_posts()) {
+            $query->the_post();
+            $product_id = get_the_ID();
+            $product_slug = get_post_field('post_name', $product_id);
+            $product_url = '/product/' . $product_slug . '/';
+            $thumbnail_url = get_the_post_thumbnail_url($product_id, 'medium');
+            $product_title = get_the_title($product_id);
+            $price = get_post_meta($product_id, '_affilicart_price', true);
+            $description = wp_trim_words(get_post_meta($product_id, 'product_description', true), 15);
+            $asin = get_post_meta($product_id, '_affilicart_asin', true);
+            
+            $html .= '<div class="col-md-4 mb-4">';
+            $html .= '<div class="ac-product-card">';
+            
+            if ($a['show_image'] === 'yes' && $thumbnail_url) {
+                $html .= '<a href="' . esc_url($product_url) . '" style="text-decoration: none; color: inherit; display: block;">';
+                $html .= '<img src="' . esc_url($thumbnail_url) . '" alt="' . esc_attr($product_title) . '" class="ac-product-image">';
+                $html .= '</a>';
+            }
+            
+            if ($a['show_title'] === 'yes') {
+                $html .= '<h5 class="ac-card-title">' . esc_html($product_title) . '</h5>';
+            }
+            
+            if ($a['show_description'] === 'yes' && $description) {
+                $html .= '<p class="ac-card-text">' . esc_html($description) . '</p>';
+            }
+            
+            if ($a['show_price'] === 'yes' && $price) {
+                $price_display = strpos($price, '$') === 0 ? $price : '$' . $price;
+                $html .= '<div class="ac-price"><span>' . esc_html($price_display) . '</span> <i class="bi bi-info-circle" style="font-size: 12px; color: #999; cursor: help;"></i></div>';
+            }
+            
+            $html .= '<button class="btn btn-primary w-100 ac-grid-btn" onclick="addToCart(' . intval($product_id) . ', false)" style="background-color: var(--ac-accent-color, #007cba); border-color: var(--ac-accent-color, #007cba);">Add to Cart</button>';
+            
+            if ($a['show_amazon_link'] === 'yes' && $asin) {
+                $amazon_url = 'https://www.amazon.com/dp/' . esc_attr($asin) . '?tag=' . esc_attr($associate_tag);
+                $html .= '<a href="' . esc_url($amazon_url) . '" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary w-100 mt-2" style="font-size: 12px;"><i class="bi bi-box-arrow-up-right"></i> View on Amazon</a>';
+            }
+            
+            $html .= '</div></div>';
+        }
+        wp_reset_postdata();
+    } else {
+        $html .= '<div class="col-12 text-center text-muted">No products found.</div>';
+    }
+    
+    $html .= '</div></div>';
+    return $html;
 });
 
 // 8. Shortcode - Button

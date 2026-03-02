@@ -14,7 +14,7 @@ if (have_posts()) {
     $product_price = get_post_meta($product_id, '_affilicart_price', true);
     $product_asin = get_post_meta($product_id, '_affilicart_asin', true);
     ?>
-    <div class="affilicart-single-product">
+    <div class="affilicart-single-product" id="ac-single-product">
         <style>
             .affilicart-single-product {
                 max-width: 1200px;
@@ -118,7 +118,7 @@ if (have_posts()) {
             <!-- Product Image (Left) -->
             <div class="product-image-container">
                 <?php if ($product_image): ?>
-                    <img src="<?php echo esc_url($product_image); ?>" alt="<?php echo esc_attr($product_title); ?>" class="product-image" id="product-image-<?php echo esc_attr($product_id); ?>">
+                    <img src="<?php echo esc_url($product_image); ?>" alt="<?php echo esc_attr($product_title); ?>" class="product-image" id="product-image-<?php echo esc_attr($product_id); ?>" style="cursor: pointer;">
                 <?php else: ?>
                     <div style="width: 100%; aspect-ratio: 1; background: #f0f0f0; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #999;">No Image</div>
                 <?php endif; ?>
@@ -132,6 +132,20 @@ if (have_posts()) {
                     <div class="product-price">
                         <span><?php echo esc_html($product_price); ?></span> <i class="bi bi-info-circle" style="font-size: 12px; color: #999; cursor: help;"></i>
                     </div>
+                    
+                    <?php 
+                    // Get product categories
+                    $categories = get_the_terms($product_id, 'amazon_product_category');
+                    if ($categories && !is_wp_error($categories)):
+                    ?>
+                        <div style="display: flex; gap: 6px; flex-wrap: wrap; margin: 40px 0;">
+                            <?php foreach ($categories as $category): ?>
+                                <a href="<?php echo esc_url(home_url('/product/category/' . $category->slug . '/')); ?>" style="display: inline-block; padding: 0 10px; background: #f0f0f0; border-radius: 16px; font-size: 11px; color: #333; text-decoration: none; border: 1px solid #ddd; transition: all 0.2s ease;">
+                                    <?php echo esc_html($category->name); ?>
+                                </a>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
                 <?php endif; ?>
                 
                 <?php if ($product_description): ?>
@@ -147,15 +161,23 @@ if (have_posts()) {
                         </button>
                         <?php if ($product_asin): ?>
                             <div style="margin-top: 12px; text-align: center; width: 100%;">
-                                <a href="<?php echo esc_url('https://www.amazon.com/dp/' . urlencode($product_asin) . '?tag=' . get_option('affilicart_associate_id', 'default-20')); ?>" target="_blank" rel="noopener noreferrer" style="font-size: 13px; color: var(--ac-accent-color, #007cba); text-decoration: none; display: inline-block;">
+                                <a href="<?php echo esc_url('https://www.amazon.com/dp/' . urlencode($product_asin) . '?tag=' . get_option('affilicart_associate_id', 'default-20')); ?>" target="_blank" rel="noopener noreferrer" style="font-size: 13px; color: #666; text-decoration: none; display: inline-block;">
                                     View on Amazon <i class="bi bi-box-arrow-up-right" style="font-size: 11px;"></i>
                                 </a>
                             </div>
                         <?php endif; ?>
                     </div>
                 </div>
+            </div>
         </div>
     </div>
+
+    <!-- Block Editor Content -->
+    <?php if (has_blocks()) : ?>
+        <div class="affilicart-block-content" style="max-width: 1200px; margin: 40px auto; padding: 0 20px;">
+            <?php the_content(); ?>
+        </div>
+    <?php endif; ?>
 
     <?php
 } else {
