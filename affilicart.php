@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: Shopazon Affiliate Manager
+ * Plugin Name: Affilicart Affiliate Manager
  * Description: A simple Amazon Affiliate product manager with settings and menu cart.
  * Version: 1.3
  * Author: Your Name
@@ -10,30 +10,31 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 // Activation Hook - Flush Rewrite Rules
 register_activation_hook( __FILE__, function() {
-    shopazon_register_post_type();
+    affilicart_register_post_type();
     flush_rewrite_rules();
 });
 
 // 1. Register Custom Post Type
-function shopazon_register_post_type() {
-    $custom_slug = get_option('shopazon_post_slug', 'product');
+function affilicart_register_post_type() {
+    $custom_slug = get_option('affilicart_post_slug', 'product');
     $args = array(
         'labels' => array(
             'name' => 'Products',
-            'menu_name' => 'Shopazon',
+            'menu_name' => 'Affilicart',
             'add_new_item' => 'Add New Product',
             'edit_item' => 'Edit Product',
             'new_item' => 'New Product'
         ),
         'public' => true,
         'supports' => array( 'title', 'thumbnail' ),
+        'taxonomies' => array( 'category', 'post_tag' ),
         'menu_icon' => 'dashicons-cart',
         'show_in_rest' => true,
         'rewrite' => array( 'slug' => $custom_slug ),
     );
     register_post_type( 'amazon_product', $args );
 }
-add_action( 'init', 'shopazon_register_post_type' );
+add_action( 'init', 'affilicart_register_post_type' );
 
 // Add Product Description Meta Box
 add_action( 'add_meta_boxes', function() {
@@ -125,13 +126,13 @@ add_action( 'admin_head', function() {
 
 // 2. Admin Columns for Shortcode
 add_filter('manage_amazon_product_posts_columns', function($columns) {
-    $columns['shopazon_shortcode'] = 'Shortcode';
+    $columns['affilicart_shortcode'] = 'Shortcode';
     return $columns;
 });
 add_action('manage_amazon_product_posts_custom_column', function($column, $post_id) {
-    if ($column === 'shopazon_shortcode') {
-        $grid_shortcode = '[shopazon_grid id="' . $post_id . '"]';
-        $button_shortcode = '[shopazon_button id="' . $post_id . '"]';
+    if ($column === 'affilicart_shortcode') {
+        $grid_shortcode = '[affilicart_grid id="' . $post_id . '"]';
+        $button_shortcode = '[affilicart_button id="' . $post_id . '"]';
         
         echo '<div style="display: flex; gap: 20px;">';
         
@@ -139,7 +140,7 @@ add_action('manage_amazon_product_posts_custom_column', function($column, $post_
         echo '<div>';
         echo '<div style="font-size: 12px; color: #666; margin-bottom: 4px;"><strong>Grid:</strong></div>';
         echo '<div style="display: flex; align-items: center; gap: 8px;">';
-        echo '<code style="background:#eee; padding:5px; border-radius:3px;" id="shopazon-grid-' . $post_id . '">' . $grid_shortcode . '</code>';
+        echo '<code style="background:#eee; padding:5px; border-radius:3px;" id="affilicart-grid-' . $post_id . '">' . $grid_shortcode . '</code>';
         echo '<button type="button" style="background: none; border: none; cursor: pointer; padding: 0; color: #666666; font-size: 16px;" onclick="copyToClipboard(\'' . esc_attr($grid_shortcode) . '\', this)" title="Copy grid shortcode">';
         echo '<span class="dashicons dashicons-admin-page"></span>';
         echo '</button>';
@@ -150,7 +151,7 @@ add_action('manage_amazon_product_posts_custom_column', function($column, $post_
         echo '<div>';
         echo '<div style="font-size: 12px; color: #666; margin-bottom: 4px;"><strong>Button:</strong></div>';
         echo '<div style="display: flex; align-items: center; gap: 8px;">';
-        echo '<code style="background:#eee; padding:5px; border-radius:3px;" id="shopazon-button-' . $post_id . '">' . $button_shortcode . '</code>';
+        echo '<code style="background:#eee; padding:5px; border-radius:3px;" id="affilicart-button-' . $post_id . '">' . $button_shortcode . '</code>';
         echo '<button type="button" style="background: none; border: none; cursor: pointer; padding: 0; color: #666666; font-size: 16px;" onclick="copyToClipboard(\'' . esc_attr($button_shortcode) . '\', this)" title="Copy button shortcode">';
         echo '<span class="dashicons dashicons-admin-page"></span>';
         echo '</button>';
@@ -179,32 +180,32 @@ add_action('manage_amazon_product_posts_custom_column', function($column, $post_
 
 // 3. Settings Page (Associate ID)
 add_action('admin_menu', function() {
-    add_submenu_page('edit.php?post_type=amazon_product', 'Shopazon Settings', 'Settings', 'manage_options', 'shopazon-settings', 'shopazon_settings_html');
+    add_submenu_page('edit.php?post_type=amazon_product', 'Affilicart Settings', 'Settings', 'manage_options', 'affilicart-settings', 'affilicart_settings_html');
 });
 
-function shopazon_settings_html() {
+function affilicart_settings_html() {
     $current_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'settings';
     ?>
     <div class="wrap">
-        <h1>Shopazon Settings</h1>
+        <h1>Affilicart Settings</h1>
         
         <div class="nav-tab-wrapper" style="border-bottom: 1px solid #ccc; margin-bottom: 20px;">
-            <a href="?post_type=amazon_product&page=shopazon-settings&tab=settings" class="nav-tab <?php echo $current_tab === 'settings' ? 'nav-tab-active' : ''; ?>">Settings</a>
-            <a href="?post_type=amazon_product&page=shopazon-settings&tab=how-to" class="nav-tab <?php echo $current_tab === 'how-to' ? 'nav-tab-active' : ''; ?>">How To</a>
-            <a href="?post_type=amazon_product&page=shopazon-settings&tab=disclaimer" class="nav-tab <?php echo $current_tab === 'disclaimer' ? 'nav-tab-active' : ''; ?>">Disclaimer</a>
+            <a href="?post_type=amazon_product&page=affilicart-settings&tab=settings" class="nav-tab <?php echo $current_tab === 'settings' ? 'nav-tab-active' : ''; ?>">Settings</a>
+            <a href="?post_type=amazon_product&page=affilicart-settings&tab=how-to" class="nav-tab <?php echo $current_tab === 'how-to' ? 'nav-tab-active' : ''; ?>">How To</a>
+            <a href="?post_type=amazon_product&page=affilicart-settings&tab=disclaimer" class="nav-tab <?php echo $current_tab === 'disclaimer' ? 'nav-tab-active' : ''; ?>">Disclaimer</a>
         </div>
         
         <?php if ($current_tab === 'settings'): ?>
             <form method="post" action="options.php">
                 <?php
-                settings_fields('shopazon_settings_group');
-                do_settings_sections('shopazon-settings');
+                settings_fields('affilicart_settings_group');
+                do_settings_sections('affilicart-settings');
                 submit_button();
                 ?>
             </form>
         <?php elseif ($current_tab === 'how-to'): ?>
             <div style="max-width: 900px;">
-                <h2>How To Use Shopazon</h2>
+                <h2>How To Use Affilicart</h2>
                 
                 <h3>⚙️ Step 1: Configure Settings</h3>
                 <p>Go to the <strong>Settings</strong> tab to configure:</p>
@@ -242,15 +243,15 @@ function shopazon_settings_html() {
                     <tbody>
                         <tr>
                             <td style="padding: 12px; border: 1px solid #ddd;">Display all products</td>
-                            <td style="padding: 12px; border: 1px solid #ddd; font-family: monospace; background: #f9f9f9;"><code>[shopazon_grid]</code></td>
+                            <td style="padding: 12px; border: 1px solid #ddd; font-family: monospace; background: #f9f9f9;"><code>[affilicart_grid]</code></td>
                         </tr>
                         <tr>
                             <td style="padding: 12px; border: 1px solid #ddd;">Display a single product</td>
-                            <td style="padding: 12px; border: 1px solid #ddd; font-family: monospace; background: #f9f9f9;"><code>[shopazon_grid id="123"]</code></td>
+                            <td style="padding: 12px; border: 1px solid #ddd; font-family: monospace; background: #f9f9f9;"><code>[affilicart_grid id="123"]</code></td>
                         </tr>
                         <tr>
                             <td style="padding: 12px; border: 1px solid #ddd;">Display multiple products</td>
-                            <td style="padding: 12px; border: 1px solid #ddd; font-family: monospace; background: #f9f9f9;"><code>[shopazon_grid id="123,456,789"]</code></td>
+                            <td style="padding: 12px; border: 1px solid #ddd; font-family: monospace; background: #f9f9f9;"><code>[affilicart_grid id="123,456,789"]</code></td>
                         </tr>
                     </tbody>
                 </table>
@@ -285,19 +286,19 @@ function shopazon_settings_html() {
                     </tbody>
                 </table>
                 
-                <p><strong>Example:</strong> <code>[shopazon_grid id="123" show-description="no"]</code> displays product 123 without the description.</p>
+                <p><strong>Example:</strong> <code>[affilicart_grid id="123" show-description="no"]</code> displays product 123 without the description.</p>
                 
                 <h4>Display a Single Button</h4>
                 <p>Add a standalone "Add to Cart" button for a specific product anywhere on your site:</p>
                 
-                <p style="font-family: monospace; background: #f9f9f9; padding: 12px; border-radius: 3px; border-left: 4px solid var(--sz-accent-color, #007cba);"><code>[shopazon_button id="123"]</code></p>
+                <p style="font-family: monospace; background: #f9f9f9; padding: 12px; border-radius: 3px; border-left: 4px solid var(--ac-accent-color, #007cba);"><code>[affilicart_button id="123"]</code></p>
                 
                 <p><strong>Use Case:</strong> Perfect for embedding product buttons within blog posts, sidebars, or anywhere you want a minimal call-to-action without the full product card.</p>
                 
                 <h4>Display a Link with Hover Card</h4>
                 <p>Add a clickable text link that shows a product preview (image, name, price) on hover:</p>
                 
-                <p style="font-family: monospace; background: #f9f9f9; padding: 12px; border-radius: 3px; border-left: 4px solid var(--sz-accent-color, #007cba);"><code>[shopazon_link id="123"]</code></p>
+                <p style="font-family: monospace; background: #f9f9f9; padding: 12px; border-radius: 3px; border-left: 4px solid var(--ac-accent-color, #007cba);"><code>[affilicart_link id="123"]</code></p>
                 
                 <p>This displays the product name as a link. When you hover over it, a small card appears showing:</p>
                 <ul style="margin: 10px 0 15px 20px;">
@@ -308,7 +309,7 @@ function shopazon_settings_html() {
                 </ul>
                 
                 <p><strong>Custom Link Text:</strong> You can change the link text by adding a <code>text</code> parameter:</p>
-                <p style="font-family: monospace; background: #f9f9f9; padding: 12px; border-radius: 3px; border-left: 4px solid var(--sz-accent-color, #007cba);"><code>[shopazon_link id="123" text="View Details"]</code></p>
+                <p style="font-family: monospace; background: #f9f9f9; padding: 12px; border-radius: 3px; border-left: 4px solid var(--ac-accent-color, #007cba);"><code>[affilicart_link id="123" text="View Details"]</code></p>
                 
                 <p><strong>Use Case:</strong> Embed product links naturally within blog post text, reviews, or recommendations. Readers can preview the product without leaving your page.</p>
                 
@@ -326,11 +327,11 @@ function shopazon_settings_html() {
                 <h2>Legal Disclaimer & Terms</h2>
                 
                 <h3>1. No Affiliation With Amazon</h3>
-                <p>Shopazon is an independent WordPress plugin and is not affiliated with, endorsed by, sponsored by, or approved by Amazon.com, Inc. or any of its affiliates, including the Amazon Associates Program.</p>
+                <p>Affilicart is an independent WordPress plugin and is not affiliated with, endorsed by, sponsored by, or approved by Amazon.com, Inc. or any of its affiliates, including the Amazon Associates Program.</p>
                 <p>"Amazon" and related marks are trademarks of Amazon.com, Inc. All such trademarks remain the property of their respective owners.</p>
                 
                 <h3>2. Use of Amazon URLs and Parameters</h3>
-                <p>Shopazon may generate or modify Amazon product URLs, including the addition of query string parameters intended to:</p>
+                <p>Affilicart may generate or modify Amazon product URLs, including the addition of query string parameters intended to:</p>
                 <ul>
                     <li>Preload shopping carts</li>
                     <li>Redirect users to specific product pages</li>
@@ -356,7 +357,7 @@ function shopazon_settings_html() {
                     <li>Amazon Brand Usage Policies</li>
                     <li>Any applicable local laws and advertising disclosure requirements</li>
                 </ul>
-                <p>Shopazon does not monitor, validate, or enforce compliance with Amazon's Terms of Service. Use of this plugin does not guarantee compliance with any Amazon policy. <strong>You assume full responsibility for ensuring your use of generated links complies with Amazon's current rules.</strong></p>
+                <p>Affilicart does not monitor, validate, or enforce compliance with Amazon's Terms of Service. Use of this plugin does not guarantee compliance with any Amazon policy. <strong>You assume full responsibility for ensuring your use of generated links complies with Amazon's current rules.</strong></p>
                 
                 <h3>4. Risk of Account Suspension or Termination</h3>
                 <p>Amazon reserves the right to suspend or terminate affiliate accounts at its sole discretion.</p>
@@ -438,7 +439,7 @@ function shopazon_settings_html() {
                 <p>The Developer is not responsible for failures caused by third-party systems.</p>
                 
                 <h3>9. Revenue Disclaimer</h3>
-                <p>Shopazon does not guarantee:</p>
+                <p>Affilicart does not guarantee:</p>
                 <ul>
                     <li>Affiliate earnings</li>
                     <li>Increased conversion rates</li>
@@ -459,7 +460,7 @@ function shopazon_settings_html() {
                 <p>Amazon may also modify its systems in ways that render plugin functionality partially or fully inoperable.</p>
                 
                 <h3>11. Acceptance of Terms</h3>
-                <p>By installing or using Shopazon, you acknowledge that:</p>
+                <p>By installing or using Affilicart, you acknowledge that:</p>
                 <ul>
                     <li>You have read this disclaimer</li>
                     <li>You understand the risks</li>
@@ -474,35 +475,36 @@ function shopazon_settings_html() {
 }
 
 add_action('admin_init', function() {
-    register_setting('shopazon_settings_group', 'shopazon_associate_id');
-    register_setting('shopazon_settings_group', 'shopazon_accent_color');
-    register_setting('shopazon_settings_group', 'shopazon_divi_cart');
-    register_setting('shopazon_settings_group', 'shopazon_cart_display');
-    register_setting('shopazon_settings_group', 'shopazon_lightbox');
-    register_setting('shopazon_settings_group', 'shopazon_post_slug');
-    add_settings_section('shopazon_main_section', 'Main Settings', null, 'shopazon-settings');
-    add_settings_field('shopazon_post_slug', 'Product URL Slug', function() {
-        $slug = get_option('shopazon_post_slug', 'product');
-        echo '<input type="text" name="shopazon_post_slug" value="' . esc_attr($slug) . '" class="regular-text">';
+    register_setting('affilicart_settings_group', 'affilicart_associate_id');
+    register_setting('affilicart_settings_group', 'affilicart_accent_color');
+    register_setting('affilicart_settings_group', 'affilicart_divi_cart');
+    register_setting('affilicart_settings_group', 'affilicart_cart_display');
+    register_setting('affilicart_settings_group', 'affilicart_cart_position');
+    register_setting('affilicart_settings_group', 'affilicart_lightbox');
+    register_setting('affilicart_settings_group', 'affilicart_post_slug');
+    add_settings_section('affilicart_main_section', 'Main Settings', null, 'affilicart-settings');
+    add_settings_field('affilicart_post_slug', 'Product URL Slug', function() {
+        $slug = get_option('affilicart_post_slug', 'product');
+        echo '<input type="text" name="affilicart_post_slug" value="' . esc_attr($slug) . '" class="regular-text">';
         echo '<p class="description">Customize the URL path for product pages. Default: "product" (URLs will be like /product/product-name). Use only lowercase letters, numbers, and hyphens.</p>';
         echo '<p class="description"><strong>Note:</strong> After changing this, you may need to visit Settings → Permalinks and save to update WordPress rewrite rules.</p>';
-    }, 'shopazon-settings', 'shopazon_main_section');
-    add_settings_field('shopazon_associate_id', 'Amazon Associate ID', function() {
-        $id = get_option('shopazon_associate_id', 'yourtag-20');
-        echo '<input type="text" name="shopazon_associate_id" value="' . esc_attr($id) . '" class="regular-text">';
+    }, 'affilicart-settings', 'affilicart_main_section');
+    add_settings_field('affilicart_associate_id', 'Amazon Associate ID', function() {
+        $id = get_option('affilicart_associate_id', 'yourtag-20');
+        echo '<input type="text" name="affilicart_associate_id" value="' . esc_attr($id) . '" class="regular-text">';
         echo '<p class="description">Enter your Amazon Associates tracking ID here.</p>';
-    }, 'shopazon-settings', 'shopazon_main_section');
-    add_settings_field('shopazon_accent_color', 'Accent Color', function() {
-        $color = get_option('shopazon_accent_color', '#007cba');
+    }, 'affilicart-settings', 'affilicart_main_section');
+    add_settings_field('affilicart_accent_color', 'Accent Color', function() {
+        $color = get_option('affilicart_accent_color', '#007cba');
         echo '<div style="display: flex; align-items: center; gap: 10px;">';
-        echo '<input type="text" name="shopazon_accent_color" value="' . esc_attr($color) . '" id="shopazon_hex_input" placeholder="#007cba" style="width: 120px; font-family: monospace; padding: 8px; border: 1px solid #ccc; border-radius: 3px;" maxlength="7">';
-        echo '<input type="color" id="shopazon_accent_color" style="width: 50px; height: 40px; cursor: pointer; border: 1px solid #ccc; border-radius: 3px;">';
-        echo '<button type="button" class="button" onclick="document.getElementById(\'shopazon_hex_input\').value = \'#007cba\'; document.getElementById(\'shopazon_accent_color\').value = \'#007cba\';">Reset to Default</button>';
+        echo '<input type="text" name="affilicart_accent_color" value="' . esc_attr($color) . '" id="affilicart_hex_input" placeholder="#007cba" style="width: 120px; font-family: monospace; padding: 8px; border: 1px solid #ccc; border-radius: 3px;" maxlength="7">';
+        echo '<input type="color" id="affilicart_accent_color" style="width: 50px; height: 40px; cursor: pointer; border: 1px solid #ccc; border-radius: 3px;">';
+        echo '<button type="button" class="button" onclick="document.getElementById(\'affilicart_hex_input\').value = \'#007cba\'; document.getElementById(\'affilicart_accent_color\').value = \'#007cba\';">Reset to Default</button>';
         echo '</div>';
         echo '<p class="description">Enter hex code directly or use the color picker. Default: WordPress Blue (#007cba).</p>';
         echo '<script>
-            const hexInput = document.getElementById("shopazon_hex_input");
-            const colorPicker = document.getElementById("shopazon_accent_color");
+            const hexInput = document.getElementById("affilicart_hex_input");
+            const colorPicker = document.getElementById("affilicart_accent_color");
             
             // Set initial color picker value
             colorPicker.value = hexInput.value || "#007cba";
@@ -519,41 +521,60 @@ add_action('admin_init', function() {
                 hexInput.value = this.value;
             });
         </script>';
-    }, 'shopazon-settings', 'shopazon_main_section');
-    add_settings_field('shopazon_cart_display', 'Shopping Cart Display', function() {
-        $display = get_option('shopazon_cart_display', 'auto');
+    }, 'affilicart-settings', 'affilicart_main_section');
+    add_settings_field('affilicart_cart_display', 'Shopping Cart Display', function() {
+        $display = get_option('affilicart_cart_display', 'auto');
         $is_divi = function_exists('et_setup_theme') || defined('ET_BUILDER_PLUGIN_VERSION');
         
-        echo '<select name="shopazon_cart_display">';
+        echo '<select name="affilicart_cart_display">';
         echo '<option value="auto" ' . selected($display, 'auto', false) . '>' . ($is_divi ? 'Auto (Divi Menu)' : 'Auto (Floating Button)') . '</option>';
-        echo '<option value="floating" ' . selected($display, 'floating', false) . '>Floating Button (Bottom Right)</option>';
+        echo '<option value="floating" ' . selected($display, 'floating', false) . '>Floating Button</option>';
         if ($is_divi) {
             echo '<option value="menu" ' . selected($display, 'menu', false) . '>Divi Menu</option>';
         }
         echo '</select>';
         echo '<p class="description">Choose how the shopping cart icon is displayed. Floating works on all themes.</p>';
-    }, 'shopazon-settings', 'shopazon_main_section');
-    add_settings_field('shopazon_divi_cart', 'Divi Menu Cart Display', function() {
-        $enabled = get_option('shopazon_divi_cart', false);
+    }, 'affilicart-settings', 'affilicart_main_section');
+    add_settings_field('affilicart_cart_position', 'Floating Cart Position', function() {
+        $position = get_option('affilicart_cart_position', 'bottom-right');
+        $positions = array(
+            'top-left' => 'Top Left',
+            'top-right' => 'Top Right',
+            'bottom-left' => 'Bottom Left',
+            'bottom-right' => 'Bottom Right'
+        );
+        
+        echo '<div style="display: flex; flex-direction: column; gap: 8px;">';
+        foreach ($positions as $value => $label) {
+            echo '<label style="display: flex; align-items: center; gap: 8px; margin: 0;">';
+            echo '<input type="radio" name="affilicart_cart_position" value="' . esc_attr($value) . '" ' . checked($position, $value, false) . '>';
+            echo $label;
+            echo '</label>';
+        }
+        echo '</div>';
+        echo '<p class="description">Select where the floating cart icon should appear on the page. Only applies when using floating cart display.</p>';
+    }, 'affilicart-settings', 'affilicart_main_section');
+    add_settings_field('affilicart_divi_cart', 'Divi Menu Cart Display', function() {
+        $enabled = get_option('affilicart_divi_cart', false);
         $is_divi = function_exists('et_setup_theme') || defined('ET_BUILDER_PLUGIN_VERSION');
         
         if (!$is_divi) {
             echo '<p style="color: #d63638;"><strong>⚠️ Divi is not active</strong> — This option only works on Divi sites.</p>';
-            echo '<input type="hidden" name="shopazon_divi_cart" value="0">';
+            echo '<input type="hidden" name="affilicart_divi_cart" value="0">';
         } else {
-            echo '<label><input type="checkbox" name="shopazon_divi_cart" value="1" ' . checked($enabled, 1, false) . '> Display cart icon in the Divi menu alongside the search icon</label>';
+            echo '<label><input type="checkbox" name="affilicart_divi_cart" value="1" ' . checked($enabled, 1, false) . '> Display cart icon in the Divi menu alongside the search icon</label>';
             echo '<p class="description">When enabled, the cart icon will appear in your Divi menu with a fixed position so it\'s always visible. (Deprecated: Use "Shopping Cart Display" option above instead)</p>';
         }
-    }, 'shopazon-settings', 'shopazon_main_section');
-    add_settings_field('shopazon_lightbox', 'Image Lightbox', function() {
-        $enabled = get_option('shopazon_lightbox', true);
-        echo '<label><input type="checkbox" name="shopazon_lightbox" value="1" ' . checked($enabled, 1, false) . '> Enable lightbox effect when clicking product images</label>';
+    }, 'affilicart-settings', 'affilicart_main_section');
+    add_settings_field('affilicart_lightbox', 'Image Lightbox', function() {
+        $enabled = get_option('affilicart_lightbox', true);
+        echo '<label><input type="checkbox" name="affilicart_lightbox" value="1" ' . checked($enabled, 1, false) . '> Enable lightbox effect when clicking product images</label>';
         echo '<p class="description">When enabled, clicking a product image will open it in a fullscreen lightbox viewer.</p>';
-    }, 'shopazon-settings', 'shopazon_main_section');
+    }, 'affilicart-settings', 'affilicart_main_section');
 });
 
 // Sanitize post slug setting
-add_filter('sanitize_option_shopazon_post_slug', function($value) {
+add_filter('sanitize_option_affilicart_post_slug', function($value) {
     if (empty($value)) {
         return 'product';
     }
@@ -563,67 +584,72 @@ add_filter('sanitize_option_shopazon_post_slug', function($value) {
 
 // 4. Meta Boxes (Product Details)
 add_action( 'add_meta_boxes', function() {
-    add_meta_box( 'shopazon_details', 'Product Details', 'shopazon_meta_box_cb', 'amazon_product', 'normal', 'high' );
+    add_meta_box( 'affilicart_details', 'Product Details', 'affilicart_meta_box_cb', 'amazon_product', 'normal', 'high' );
 });
-function shopazon_meta_box_cb( $post ) {
-    $asin = get_post_meta( $post->ID, '_shopazon_asin', true );
-    $price = get_post_meta( $post->ID, '_shopazon_price', true );
+function affilicart_meta_box_cb( $post ) {
+    $asin = get_post_meta( $post->ID, '_affilicart_asin', true );
+    $price = get_post_meta( $post->ID, '_affilicart_price', true );
     ?>
-    <p><label>ASIN:</label><input type="text" name="shopazon_asin" value="<?php echo esc_attr($asin); ?>" class="widefat"></p>
-    <p><label>Price ($):</label><input type="text" name="shopazon_price" value="<?php echo esc_attr($price); ?>" class="widefat"></p>
+    <p><label>ASIN:</label><input type="text" name="affilicart_asin" value="<?php echo esc_attr($asin); ?>" class="widefat"></p>
+    <p><label>Price ($):</label><input type="text" name="affilicart_price" value="<?php echo esc_attr($price); ?>" class="widefat"></p>
     <?php
 }
 add_action( 'save_post', function($post_id) {
-    if ( isset( $_POST['shopazon_asin'] ) ) update_post_meta( $post_id, '_shopazon_asin', sanitize_text_field( $_POST['shopazon_asin'] ) );
-    if ( isset( $_POST['shopazon_price'] ) ) update_post_meta( $post_id, '_shopazon_price', sanitize_text_field( $_POST['shopazon_price'] ) );
+    if ( isset( $_POST['affilicart_asin'] ) ) update_post_meta( $post_id, '_affilicart_asin', sanitize_text_field( $_POST['affilicart_asin'] ) );
+    if ( isset( $_POST['affilicart_price'] ) ) update_post_meta( $post_id, '_affilicart_price', sanitize_text_field( $_POST['affilicart_price'] ) );
 });
 
 // 5. Enqueue & Global Logic
 add_action('wp_enqueue_scripts', function() {
     wp_enqueue_style('bootstrap-css', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css');
     wp_enqueue_style('bootstrap-icons', 'https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css');
-    wp_enqueue_style('shopazon-style', plugins_url('style.css', __FILE__));
+    wp_enqueue_style('affilicart-style', plugins_url('style.css', __FILE__));
     wp_enqueue_script('bootstrap-bundle', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js', array(), null, true);
-    wp_enqueue_script('shopazon-js', plugins_url('scripts.js', __FILE__), array('jquery', 'bootstrap-bundle'), null, true);
+    wp_enqueue_script('affilicart-js', plugins_url('scripts.js', __FILE__), array('jquery', 'bootstrap-bundle'), null, true);
 
     $products = array();
     $query = new WP_Query(array('post_type' => 'amazon_product', 'posts_per_page' => -1, 'post_status' => 'publish'));
     foreach ($query->posts as $p) {
+        $categories = wp_get_post_terms($p->ID, 'category', array('fields' => 'names'));
+        $tags = wp_get_post_terms($p->ID, 'post_tag', array('fields' => 'names'));
         $products[] = array(
             'id' => $p->ID, 'name' => get_the_title($p->ID),
             'description' => wp_trim_words(get_post_meta($p->ID, 'product_description', true), 15),
             'image' => get_the_post_thumbnail_url($p->ID, 'medium'),
             'image_full' => get_the_post_thumbnail_url($p->ID, 'full'),
-            'price' => get_post_meta($p->ID, '_shopazon_price', true),
-            'asin' => get_post_meta($p->ID, '_shopazon_asin', true),
+            'price' => get_post_meta($p->ID, '_affilicart_price', true),
+            'asin' => get_post_meta($p->ID, '_affilicart_asin', true),
+            'categories' => is_array($categories) ? $categories : array(),
+            'tags' => is_array($tags) ? $tags : array(),
         );
     }
     
     // Determine cart display setting
     $is_divi = function_exists('et_setup_theme') || defined('ET_BUILDER_PLUGIN_VERSION');
-    $cart_display = get_option('shopazon_cart_display', 'auto');
-    $divi_cart_enabled = get_option('shopazon_divi_cart', false);
+    $cart_display = get_option('affilicart_cart_display', 'auto');
+    $divi_cart_enabled = get_option('affilicart_divi_cart', false);
     
     // For backward compatibility: if old checkbox is unchecked on Divi, use floating
     if ($is_divi && !$divi_cart_enabled && $cart_display === 'auto') {
         $cart_display = 'floating';
     }
     
-    wp_localize_script('shopazon-js', 'shopazon_data', array(
+    wp_localize_script('affilicart-js', 'affilicart_data', array(
         'products' => $products,
-        'associate_tag' => get_option('shopazon_associate_id', 'default-20'),
-        'accent_color' => get_option('shopazon_accent_color', '#007cba'),
-        'lightbox_enabled' => (bool) get_option('shopazon_lightbox', true),
+        'associate_tag' => get_option('affilicart_associate_id', 'default-20'),
+        'accent_color' => get_option('affilicart_accent_color', '#007cba'),
+        'lightbox_enabled' => (bool) get_option('affilicart_lightbox', true),
         'is_divi' => $is_divi,
-        'cart_display' => $cart_display
+        'cart_display' => $cart_display,
+        'cart_position' => get_option('affilicart_cart_position', 'bottom-right')
     ));
 });
 
 // 6. Menu Icon & Modal (only add if NOT using floating cart)
 add_filter('wp_nav_menu_items', function($items) {
     $is_divi = function_exists('et_setup_theme') || defined('ET_BUILDER_PLUGIN_VERSION');
-    $cart_display = get_option('shopazon_cart_display', 'auto');
-    $divi_cart_enabled = get_option('shopazon_divi_cart', false);
+    $cart_display = get_option('affilicart_cart_display', 'auto');
+    $divi_cart_enabled = get_option('affilicart_divi_cart', false);
     
     // For backward compatibility: if old checkbox is unchecked on Divi, use floating
     if ($is_divi && !$divi_cart_enabled && $cart_display === 'auto') {
@@ -637,7 +663,7 @@ add_filter('wp_nav_menu_items', function($items) {
     
     // For non-Divi themes, add menu item if using menu display
     if (!$is_divi && $cart_display !== 'floating') {
-        $items .= '<li class="menu-item sz-menu-cart"><a href="#" data-bs-toggle="modal" data-bs-target="#cartModal"><i class="bi bi-cart"></i> <span id="cart-count">0</span></a></li>';
+        $items .= '<li class="menu-item ac-menu-cart"><a href="#" data-bs-toggle="modal" data-bs-target="#cartModal"><i class="bi bi-cart"></i> <span id="cart-count">0</span></a></li>';
     }
     return $items;
 }, 10, 2);
@@ -645,8 +671,8 @@ add_filter('wp_nav_menu_items', function($items) {
 // For Divi: inject cart into header via JavaScript (not as menu item)
 add_action('wp_footer', function() {
     $is_divi = function_exists('et_setup_theme') || defined('ET_BUILDER_PLUGIN_VERSION');
-    $cart_display = get_option('shopazon_cart_display', 'auto');
-    $divi_cart_enabled = get_option('shopazon_divi_cart', false);
+    $cart_display = get_option('affilicart_cart_display', 'auto');
+    $divi_cart_enabled = get_option('affilicart_divi_cart', false);
     
     // For backward compatibility: if old checkbox is unchecked on Divi, use floating
     if ($is_divi && !$divi_cart_enabled && $cart_display === 'auto') {
@@ -662,12 +688,12 @@ add_action('wp_footer', function() {
         echo '<script>
             document.addEventListener("DOMContentLoaded", function() {
                 const navBar = document.getElementById("et-top-navigation");
-                if (navBar && !document.getElementById("sz-top-cart")) {
-                    const cartHtml = \'<div id="sz-top-cart"><a href="#" data-bs-toggle="modal" data-bs-target="#cartModal"><i class="bi bi-cart"></i> <span id="cart-count">0</span></a></div>\';
+                if (navBar && !document.getElementById("ac-top-cart")) {
+                    const cartHtml = \'<div id="ac-top-cart"><a href="#" data-bs-toggle="modal" data-bs-target="#cartModal"><i class="bi bi-cart"></i> <span id="cart-count">0</span></a></div>\';
                     navBar.insertAdjacentHTML("beforeend", cartHtml);
                     
                     // Update cart count
-                    const cart = JSON.parse(localStorage.getItem("sz_cart")) || [];
+                    const cart = JSON.parse(localStorage.getItem("ac_cart")) || [];
                     const totalQuantity = cart.reduce((sum, item) => sum + item.quantity, 0);
                     const countElement = document.getElementById("cart-count");
                     if (countElement) {
@@ -682,8 +708,8 @@ add_action('wp_footer', function() {
 // Add Divi cart styling using the same approach as Divi's search icon
 add_action('wp_head', function() {
     $is_divi = function_exists('et_setup_theme') || defined('ET_BUILDER_PLUGIN_VERSION');
-    $cart_display = get_option('shopazon_cart_display', 'auto');
-    $divi_cart_enabled = get_option('shopazon_divi_cart', false);
+    $cart_display = get_option('affilicart_cart_display', 'auto');
+    $divi_cart_enabled = get_option('affilicart_divi_cart', false);
     
     // For backward compatibility: if old checkbox is unchecked on Divi, use floating
     if ($is_divi && !$divi_cart_enabled && $cart_display === 'auto') {
@@ -697,13 +723,13 @@ add_action('wp_head', function() {
     
     if ($is_divi && $cart_display === 'menu') {
         echo '<style>
-            @keyframes sz-shake-divi {
+            @keyframes ac-shake-divi {
                 0%, 100% { transform: translateX(0); }
                 10%, 30%, 50%, 70%, 90% { transform: translateX(-2px); }
                 20%, 40%, 60%, 80% { transform: translateX(2px); }
             }
             
-            #sz-top-cart {
+            #ac-top-cart {
                 float: right;
                 margin: -5px 10px 0 15px;
                 position: relative;
@@ -714,13 +740,13 @@ add_action('wp_head', function() {
             }
             
             @media (max-width: 980px) {
-                #sz-top-cart {
+                #ac-top-cart {
                     margin: 0 20px 0 0 !important;
                 }
             }
             
-            #sz-top-cart.sz-shake {
-                animation: sz-shake-divi 0.8s ease-in-out;
+            #ac-top-cart.ac-shake {
+                animation: ac-shake-divi 0.8s ease-in-out;
             }
             
             .et_search_form_container input {
@@ -728,7 +754,7 @@ add_action('wp_head', function() {
                 color: inherit !important;
             }
             
-            #sz-top-cart a {
+            #ac-top-cart a {
                 display: inline-flex !important;
                 align-items: center !important;
                 gap: 6px !important;
@@ -738,14 +764,14 @@ add_action('wp_head', function() {
                 cursor: pointer;
                 padding: 0 !important;
             }
-            #sz-top-cart a:hover {
+            #ac-top-cart a:hover {
                 opacity: 0.8;
             }
-            #sz-top-cart .bi-cart {
+            #ac-top-cart .bi-cart {
                 font-size: 16px;
             }
-            #sz-top-cart #cart-count {
-                background: var(--sz-accent-color, #007cba) !important;
+            #ac-top-cart #cart-count {
+                background: var(--ac-accent-color, #007cba) !important;
                 color: white !important;
                 border-radius: 50% !important;
                 width: 20px !important;
@@ -806,10 +832,10 @@ add_action('wp_head', function() {
 // Pass Divi info to JavaScript
 add_action('wp_footer', function() {
     $is_divi = function_exists('et_setup_theme') || defined('ET_BUILDER_PLUGIN_VERSION');
-    $divi_cart_enabled = get_option('shopazon_divi_cart', false);
+    $divi_cart_enabled = get_option('affilicart_divi_cart', false);
     
     if ($is_divi && $divi_cart_enabled) {
-        echo '<script>window.shopazon_is_divi = true;</script>';
+        echo '<script>window.affilicart_is_divi = true;</script>';
     }
 }, 1);
 
@@ -837,7 +863,7 @@ add_action('wp_footer', function() { ?>
 <?php });
 
 // 7. Shortcode - Grid
-add_shortcode('shopazon_grid', function($atts) {
+add_shortcode('affilicart_grid', function($atts) {
     $a = shortcode_atts(array(
         'id' => null,
         'show_image' => 'yes',
@@ -845,26 +871,36 @@ add_shortcode('shopazon_grid', function($atts) {
         'show_description' => 'yes',
         'show_price' => 'yes'
     ), $atts);
-    return '<div class="sz-shop-wrapper"><div id="product-list" class="row" data-single-id="'.esc_attr($a['id']).'" data-show-image="'.esc_attr($a['show_image']).'" data-show-title="'.esc_attr($a['show_title']).'" data-show-description="'.esc_attr($a['show_description']).'" data-show-price="'.esc_attr($a['show_price']).'"></div></div>';
+    return '<div class="ac-shop-wrapper"><div id="product-list" class="row" data-single-id="'.esc_attr($a['id']).'" data-show-image="'.esc_attr($a['show_image']).'" data-show-title="'.esc_attr($a['show_title']).'" data-show-description="'.esc_attr($a['show_description']).'" data-show-price="'.esc_attr($a['show_price']).'"></div></div>';
 });
 
 // 8. Shortcode - Button
-add_shortcode('shopazon_button', function($atts) {
+add_shortcode('affilicart_button', function($atts) {
     $a = shortcode_atts(array('id' => null), $atts);
     if (!$a['id']) {
-        return '<div class="text-danger">Error: shopazon_button requires an id parameter</div>';
+        return '<div class="text-danger">Error: affilicart_button requires an id parameter</div>';
     }
-    return '<div id="sz-button-container" data-product-id="'.esc_attr($a['id']).'"></div>';
+    return '<div id="ac-button-container" data-product-id="'.esc_attr($a['id']).'"></div>';
 });
 
 // 9. Shortcode - Link with Hover Card
-add_shortcode('shopazon_link', function($atts) {
+add_shortcode('affilicart_link', function($atts) {
     $a = shortcode_atts(array('id' => null, 'text' => null), $atts);
     if (!$a['id']) {
-        return '<span class="text-danger">Error: shopazon_link requires an id parameter</span>';
+        return '<span class="text-danger">Error: affilicart_link requires an id parameter</span>';
     }
     $link_text = $a['text'] ? esc_html($a['text']) : '';
-    return '<span class="sz-hover-link" data-product-id="'.esc_attr($a['id']).'" data-link-text="'.esc_attr($link_text).'"></span>';
+    return '<span class="ac-hover-link" data-product-id="'.esc_attr($a['id']).'" data-link-text="'.esc_attr($link_text).'"></span>';
+});
+
+// Add alias for plural form
+add_shortcode('affilicart_links', function($atts) {
+    $a = shortcode_atts(array('id' => null, 'text' => null), $atts);
+    if (!$a['id']) {
+        return '<span class="text-danger">Error: affilicart_links requires an id parameter</span>';
+    }
+    $link_text = $a['text'] ? esc_html($a['text']) : '';
+    return '<span class="ac-hover-link" data-product-id="'.esc_attr($a['id']).'" data-link-text="'.esc_attr($link_text).'"></span>';
 });
 
 // 10. Custom Single Product Template

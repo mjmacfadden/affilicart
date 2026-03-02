@@ -1,6 +1,6 @@
 <?php
 /**
- * Single Product Template for Shopazon
+ * Single Product Template for Affilicart
  */
 
 get_header();
@@ -11,12 +11,12 @@ if (have_posts()) {
     $product_title = get_the_title();
     $product_image = get_the_post_thumbnail_url($product_id, 'large');
     $product_description = get_post_meta($product_id, 'product_description', true);
-    $product_price = get_post_meta($product_id, '_shopazon_price', true);
-    $product_asin = get_post_meta($product_id, '_shopazon_asin', true);
+    $product_price = get_post_meta($product_id, '_affilicart_price', true);
+    $product_asin = get_post_meta($product_id, '_affilicart_asin', true);
     ?>
-    <div class="shopazon-single-product">
+    <div class="affilicart-single-product">
         <style>
-            .shopazon-single-product {
+            .affilicart-single-product {
                 max-width: 1200px;
                 margin: 40px auto;
                 padding: 0 20px;
@@ -50,7 +50,7 @@ if (have_posts()) {
             .product-price {
                 font-size: 28px;
                 font-weight: 600;
-                color: var(--sz-accent-color, #007cba);
+                color: var(--ac-accent-color, #007cba);
                 margin: 0 0 10px 0;
                 display: flex;
                 align-items: center;
@@ -74,7 +74,7 @@ if (have_posts()) {
                 flex-wrap: wrap;
             }
             .btn-add-to-cart {
-                background-color: var(--sz-accent-color, #007cba);
+                background-color: var(--ac-accent-color, #007cba);
                 color: white;
                 border: none;
                 padding: 14px 32px;
@@ -140,12 +140,20 @@ if (have_posts()) {
                     </div>
                 <?php endif; ?>
                 
-                <div class="product-actions">
-                    <button class="btn-add-to-cart" onclick="addToCart(<?php echo esc_js($product_id); ?>, false); this.textContent = 'Added to Cart'; this.classList.add('added'); setTimeout(() => { this.textContent = 'Add to Cart'; this.classList.remove('added'); }, 2000);">
-                        Add to Cart
-                    </button>
+            <div class="product-actions">
+                    <div style="display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 200px;">
+                        <button class="btn-add-to-cart" onclick="addToCart(<?php echo esc_js($product_id); ?>, false); this.textContent = 'Added to Cart'; this.classList.add('added'); setTimeout(() => { this.textContent = 'Add to Cart'; this.classList.remove('added'); }, 2000);">
+                            Add to Cart
+                        </button>
+                        <?php if ($product_asin): ?>
+                            <div style="margin-top: 12px; text-align: center; width: 100%;">
+                                <a href="<?php echo esc_url('https://www.amazon.com/dp/' . urlencode($product_asin) . '?tag=' . get_option('affilicart_associate_id', 'default-20')); ?>" target="_blank" rel="noopener noreferrer" style="font-size: 13px; color: var(--ac-accent-color, #007cba); text-decoration: none; display: inline-block;">
+                                    View on Amazon <i class="bi bi-box-arrow-up-right" style="font-size: 11px;"></i>
+                                </a>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                 </div>
-            </div>
         </div>
     </div>
 

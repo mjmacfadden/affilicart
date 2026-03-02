@@ -1,5 +1,5 @@
 /* ==========================================================================
-   Shopazon Plugin Styles
+   Affilicart Plugin Styles
    ========================================================================== */
 
 /* Animations */
@@ -22,12 +22,12 @@
 
 /* 1. Navigation Menu Cart Item 
    -------------------------------------------------------------------------- */
-.sz-menu-cart {
+.ac-menu-cart {
     display: inline-flex !important;
     align-items: center !important;
 }
 
-.sz-menu-cart a {
+.ac-menu-cart a {
     display: flex !important;
     align-items: center !important;
     gap: 6px !important;
@@ -37,17 +37,17 @@
     text-decoration: none !important;
 }
 
-.sz-menu-cart i {
+.ac-menu-cart i {
     font-size: 1.2rem;
     line-height: 1;
 }
 
-.sz-menu-cart i.sz-shake {
+.ac-menu-cart i.ac-shake {
     animation: shake 0.5s ease-in-out;
 }
 
 #cart-count {
-    background: var(--sz-accent-color, #007cba); /* WordPress Blue */
+    background: var(--ac-accent-color, #007cba); /* WordPress Blue */
     color: #fff;
     font-size: 0.75rem;
     padding: 2px 6px;
@@ -59,7 +59,7 @@
 
 /* 1a. Floating Cart for Non-Divi Themes
    -------------------------------------------------------------------------- */
-#sz-floating-cart {
+#ac-floating-cart {
     position: fixed;
     bottom: 30px;
     right: 30px;
@@ -70,7 +70,7 @@
     transition: all 0.3s ease;
 }
 
-#sz-floating-cart a {
+#ac-floating-cart a {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -83,28 +83,28 @@
     cursor: pointer;
 }
 
-#sz-floating-cart:hover {
+#ac-floating-cart:hover {
     box-shadow: 0 6px 24px rgba(0, 0, 0, 0.2);
     transform: translateY(-2px);
 }
 
-#sz-floating-cart i {
+#ac-floating-cart i {
     font-size: 1.3rem;
     line-height: 1;
 }
 
-#sz-floating-cart i.sz-shake {
+#ac-floating-cart i.ac-shake {
     animation: shake 0.5s ease-in-out;
 }
 
 /* 2. Product Grid & Wrapper 
    -------------------------------------------------------------------------- */
-.sz-shop-wrapper {
+.ac-shop-wrapper {
     margin: 2rem 0;
     font-family: system-ui, -apple-system, sans-serif;
 }
 
-.sz-product-card {
+.ac-product-card {
     border: 1px solid #e5e5e5 !important;
     border-radius: 12px !important;
     overflow: hidden;
@@ -117,11 +117,11 @@
     flex-direction: column;
 }
 
-.sz-product-card:hover {
+.ac-product-card:hover {
     box-shadow: 0 10px 20px rgba(0,0,0,0.08);
 }
 
-.sz-product-card img {
+.ac-product-card img {
     max-height: 180px;
     width: auto;
     max-width: 100%;
@@ -131,7 +131,7 @@
     height: auto !important;
 }
 
-.sz-card-title {
+.ac-card-title {
     font-size: 1.1rem !important;
     font-weight: 700 !important;
     margin: 0 0 10px 0 !important;
@@ -139,14 +139,14 @@
     color: #2c3338;
 }
 
-.sz-card-text {
+.ac-card-text {
     font-size: 0.85rem;
     color: #646970;
     margin-bottom: 20px;
     line-height: 1.5;
 }
 
-.sz-price {
+.ac-price {
     font-size: 1.3rem;
     font-weight: 800;
     color: #1d2327;
@@ -154,15 +154,15 @@
     margin-bottom: 15px;
 }
 
-.sz-product-card .btn-primary {
-    background-color: var(--sz-accent-color, #007cba) !important;
-    border-color: var(--sz-accent-color, #007cba) !important;
+.ac-product-card .btn-primary {
+    background-color: var(--ac-accent-color, #007cba) !important;
+    border-color: var(--ac-accent-color, #007cba) !important;
     border-radius: 6px !important;
     font-weight: 600 !important;
     padding: 10px !important;
 }
 
-.sz-product-card .btn-primary:hover {
+.ac-product-card .btn-primary:hover {
     filter: brightness(0.85);
 }
 
@@ -177,7 +177,7 @@
     z-index: 99998 !important;
 }
 
-.sz-remove-item {
+.ac-remove-item {
     cursor: pointer;
     color: #d63638;
     font-size: 1.1rem;
@@ -185,7 +185,7 @@
     transition: color 0.2s;
 }
 
-.sz-remove-item:hover {
+.ac-remove-item:hover {
     color: #b32d2e;
 }
 
@@ -197,54 +197,54 @@
 /* 4. Responsive Fixes
    -------------------------------------------------------------------------- */
 @media (max-width: 768px) {
-    .sz-product-card {
+    .ac-product-card {
         margin-bottom: 20px;
     }
     
-    .sz-menu-cart a {
+    .ac-menu-cart a {
         gap: 4px !important;
     }
     
-    .sz-menu-cart a span {
+    .ac-menu-cart a span {
         font-size: 0.9rem;
     }
     
-    #sz-top-cart {
+    #ac-top-cart {
         padding: 0 8px !important;
         white-space: nowrap;
     }
 }
 
 @media (max-width: 576px) {
-    .sz-menu-cart a {
+    .ac-menu-cart a {
         flex-wrap: nowrap !important;
         gap: 2px !important;
     }
     
-    .sz-menu-cart a span {
+    .ac-menu-cart a span {
         font-size: 0.8rem;
         display: none;
     }
     
-    #sz-top-cart {
+    #ac-top-cart {
         padding: 0 4px !important;
     }
     
-    #sz-floating-cart {
+    #ac-floating-cart {
         bottom: 20px;
         right: 20px;
     }
     
-    #sz-floating-cart a {
+    #ac-floating-cart a {
         padding: 16px 20px;
         gap: 6px;
     }
     
-    #sz-floating-cart a span:not(#cart-count) {
+    #ac-floating-cart a span:not(#cart-count) {
         display: none;
     }
     
-    #sz-floating-cart i {
+    #ac-floating-cart i {
         font-size: 1.5rem;
     }
     
@@ -258,12 +258,13 @@
 
 /* 9. Hover Link Card
    -------------------------------------------------------------------------- */
-.sz-hover-card {
+.ac-hover-card {
     background: white;
     border: 1px solid #ddd;
     border-radius: 6px;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
     animation: slideUp 0.2s ease-out;
+    z-index: 100000;
 }
 
 /* 9. Divi Overrides
