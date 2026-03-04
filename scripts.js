@@ -182,9 +182,11 @@
                     <div style="padding: 12px; width: 220px; text-align: center;">
                         ${product.image ? `<img src="${product.image}" alt="${product.name}" style="width: 100%; max-height: 150px; object-fit: contain; border-radius: 8px; margin-bottom: 10px; display: block;">` : ''}
                         <div style="font-weight: 600; margin-bottom: 8px; font-size: 14px;">${product.name}</div>
-                        ${product.price ? `<div style="font-size: 13px; color: #666; margin-bottom: 10px;"><span>${product.price.startsWith('$') ? '' : '$'}${product.price}</span> <i class="bi bi-info-circle" style="font-size: 12px; color: #999; cursor: help;"></i></div>` : ''}
-                        <button class="btn btn-primary btn-sm w-100" onclick="addToCart(${product.id}, false)" style="background-color: var(--ac-accent-color, #007cba); border-color: var(--ac-accent-color, #007cba); font-size: 12px; margin-bottom: ${showAmazonLink ? '6px' : '0'};">Add to Cart</button>
-                        ${showAmazonLink ? `<div style="text-align: center; margin-top: 8px;"><a href="https://www.amazon.com/dp/${product.asin.trim()}?tag=${ASSOCIATE_TAG}" target="_blank" rel="noopener noreferrer" style="font-size: 11px; color: #666; text-decoration: none;"><i class="bi bi-box-arrow-up-right"></i> Amazon</a></div>` : ''}
+                        <button class="btn btn-primary btn-sm w-100" onclick="addToCart(${product.id}, false)" style="background-color: var(--ac-accent-color, #007cba); border-color: var(--ac-accent-color, #007cba); font-size: 12px; margin-bottom: 8px;">Add to Cart</button>
+                        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee;">
+                            <a href="https://www.amazon.com/dp/${product.asin.trim()}?tag=${ASSOCIATE_TAG}" target="_blank" rel="noopener noreferrer" style="font-size: 11px; color: #666; text-decoration: none;"><i class="bi bi-box-arrow-up-right"></i> View Price on Amazon</a>
+                            <p style="font-size: 10px; color: #999; margin: 6px 0 0 0; line-height: 1.2;">As an Amazon Associate I earn from qualifying purchases.</p>
+                        </div>
                     </div>
                 `;
                 document.body.appendChild(card);
@@ -340,11 +342,16 @@
             alertDiv.style.display = 'none';
         }
 
+        const apiEnabled = affilicart_data.api_enabled || false;
         let grandTotal = 0;
         cartItemsList.innerHTML = cart.map(item => {
-            const priceNum = parseFloat(item.price.replace(/[$,]/g, '')) || 0;
-            const subtotal = priceNum * item.quantity;
-            grandTotal += subtotal;
+            let priceContent = '';
+            if (apiEnabled && item.price) {
+                const priceNum = parseFloat(item.price.replace(/[$,]/g, '')) || 0;
+                const subtotal = priceNum * item.quantity;
+                grandTotal += subtotal;
+                priceContent = `<div class="fw-bold">$${subtotal.toFixed(2)}</div>`;
+            }
             return `
                 <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
                     <div style="display: flex; align-items: center; gap: 12px;">
@@ -359,7 +366,7 @@
                         </div>
                     </div>
                     <div class="text-end">
-                        <div class="fw-bold">$${subtotal.toFixed(2)}</div>
+                        ${priceContent}
                         <i class="bi bi-x-circle ac-remove-item" onclick="removeFromCart(${item.id})"></i>
                     </div>
                 </li>
@@ -367,7 +374,7 @@
         }).join('');
 
         if (cart.length === 0) cartItemsList.innerHTML = '<li class="text-center py-3 text-muted">Cart is empty</li>';
-        if (totalElement) totalElement.innerText = `Total: $${grandTotal.toFixed(2)}`;
+        if (totalElement && apiEnabled) totalElement.innerText = `Total: $${grandTotal.toFixed(2)}`;
     }
 
     // 7. Price Info Tooltips
@@ -383,7 +390,8 @@
                 
                 const tooltip = document.createElement('div');
                 tooltip.className = 'ac-price-tooltip';
-                tooltip.textContent = 'Price is accurate as of the time of adding to the site and may differ at checkout';
+                const priceDate = this.getAttribute('data-price-date') || 'Unknown date';
+                tooltip.textContent = 'Price updated: ' + priceDate;
                 tooltip.style.cssText = `
                     position: fixed;
                     background: #333;
@@ -549,10 +557,34 @@
                     url += `ASIN.${i + 1}=${item.asin.trim()}&Quantity.${i + 1}=${item.quantity}&`;
                 });
                 url += `AssociateTag=${ASSOCIATE_TAG}`;
-                window.open(url, '_blank');
+                checkoutOnAmazon(url);
             });
         }
     }
+    
+    // Deep link handler for Amazon shopping cart
+    window.checkoutOnAmazon = function(cartUrl) {
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+        if (isMobile) {
+            // Strategy: Attempt to trigger the Amazon app-specific protocol.
+            // If the app opens, the timer pauses. If the timer finishes, we redirect to browser.
+            const start = Date.now();
+            
+            // Attempt to trigger the Amazon app-specific protocol
+            window.location.href = cartUrl.replace('https://', 'amazon://');
+
+            setTimeout(() => {
+                // If we're still on this page after 500ms, the app didn't open.
+                if (Date.now() - start < 1000) {
+                    window.location.href = cartUrl; // Fallback to standard browser cart
+                }
+            }, 500);
+        } else {
+            // Desktop just opens in a new tab
+            window.open(cartUrl, '_blank');
+        }
+    };
     
     // Run on DOMContentLoaded
     document.addEventListener('DOMContentLoaded', initAffiliCart);

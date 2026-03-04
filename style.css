@@ -136,6 +136,7 @@ html {
     margin: 0 auto 15px;
     display: block;
     height: auto !important;
+    border-radius: 8px;
 }
 
 .ac-card-title {
