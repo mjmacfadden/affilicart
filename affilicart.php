@@ -880,6 +880,36 @@ add_action('admin_init', function() {
             echo '</div>';
         }
     }, 'affilicart-settings', 'affilicart_main_section');
+    add_settings_field('affilicart_cart_display', 'Shopping Cart Display', function() {
+        if ( AFFILICART_PRO_ACTIVE ) {
+            $display = get_option('affilicart_cart_display', 'auto');
+            $is_divi = function_exists('et_setup_theme') || defined('ET_BUILDER_PLUGIN_VERSION');
+            
+            echo '<div style="display: flex; flex-direction: column; gap: 10px;">';
+            
+            $options = array(
+                'auto' => 'Automatic (' . ($is_divi ? 'Divi Menu' : 'Floating Cart') . ')',
+                'floating' => 'Floating Cart (bottom right corner)',
+                'menu' => 'Menu Item (in site menu)'
+            );
+            
+            foreach ($options as $value => $label) {
+                echo '<label style="display: flex; align-items: center; gap: 8px; margin: 0;">';
+                echo '<input type="radio" name="affilicart_cart_display" value="' . esc_attr($value) . '" ' . checked($display, $value, false) . '>';
+                echo $label;
+                echo '</label>';
+            }
+            
+            echo '</div>';
+            echo '<p class="description">Choose how to display your shopping cart on the frontend. "Automatic" uses Divi menu on Divi sites, or floating cart on others. "Floating Cart" always shows a fixed icon in the corner. "Menu Item" adds the cart to your navigation menu.</p>';
+        } else {
+            echo '<div style="padding: 10px; background: #e7f3ff; border-left: 4px solid #2196F3; border-radius: 3px;">';
+            echo '<strong>🔒 ' . esc_html__( 'Premium Feature', 'affilicart' ) . '</strong><br>';
+            echo esc_html__( 'Customize your cart display options with Affilicart Pro. ', 'affilicart' );
+            echo '<a href="' . esc_url( add_query_arg( 'tab', 'upgrade', admin_url( 'admin.php?page=affilicart-settings' ) ) ) . '" style="color: #2196F3; font-weight: bold;">' . esc_html__( 'Upgrade to Pro →', 'affilicart' ) . '</a>';
+            echo '</div>';
+        }
+    }, 'affilicart-settings', 'affilicart_main_section');
     add_settings_field('affilicart_divi_cart', 'Divi Menu Cart Display', function() {
         if ( AFFILICART_PRO_ACTIVE ) {
             $enabled = get_option('affilicart_divi_cart', false);
