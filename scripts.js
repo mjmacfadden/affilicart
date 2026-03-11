@@ -8,8 +8,7 @@
     const products = affilicart_data.products;
     const ASSOCIATE_TAG = affilicart_data.associate_tag;
     const ACCENT_COLOR = affilicart_data.accent_color;
-    const LIGHTBOX_ENABLED = affilicart_data.lightbox_enabled;
-    const CART_POSITION = affilicart_data.cart_position || 'bottom-right';
+    const LIGHTBOX_ENABLED = affilicart_data.is_pro && affilicart_data.lightbox_enabled;
     let cart = JSON.parse(localStorage.getItem('ac_cart')) || [];
 
     // Set the CSS custom property for accent color
@@ -36,7 +35,7 @@
         lightbox.className = 'ac-lightbox';
         lightbox.innerHTML = `
             <div class="ac-lightbox-content">
-                <button class="ac-lightbox-close" aria-label="Close lightbox"><i class="bi bi-x-circle"></i></button>
+                <button class="ac-lightbox-close" aria-label="Close lightbox"><span class="dashicons dashicons-no"></span></button>
                 <img src="${imageSrc}" alt="${imageAlt}" class="ac-lightbox-image">
             </div>
         `;
@@ -178,13 +177,28 @@
             linkElement.addEventListener('mouseenter', function(e) {
                 const card = document.createElement('div');
                 card.className = 'ac-hover-card';
+                
+                // Create image HTML - make it clickable for pro users
+                let imageHTML = '';
+                if (product.image) {
+                    const imgElement = `<img src="${product.image}" alt="${product.name}" style="width: 100%; max-height: 150px; object-fit: contain; border-radius: 8px; margin-bottom: 10px; display: block;">`;
+                    if (affilicart_data.is_pro) {
+                        const productSlug = affilicart_data.product_slug || 'product';
+                        imageHTML = `<a href="/${productSlug}/${product.slug}/" style="text-decoration: none; color: inherit; display: block;">${imgElement}</a>`;
+                    } else {
+                        imageHTML = imgElement;
+                    }
+                }
+                
                 card.innerHTML = `
                     <div style="padding: 12px; width: 220px; text-align: center;">
-                        ${product.image ? `<img src="${product.image}" alt="${product.name}" style="width: 100%; max-height: 150px; object-fit: contain; border-radius: 8px; margin-bottom: 10px; display: block;">` : ''}
+                        ${imageHTML}
                         <div style="font-weight: 600; margin-bottom: 8px; font-size: 14px;">${product.name}</div>
-                        ${product.price ? `<div style="font-size: 13px; color: #666; margin-bottom: 10px;"><span>${product.price.startsWith('$') ? '' : '$'}${product.price}</span> <i class="bi bi-info-circle" style="font-size: 12px; color: #999; cursor: help;"></i></div>` : ''}
-                        <button class="btn btn-primary btn-sm w-100" onclick="addToCart(${product.id}, false)" style="background-color: var(--ac-accent-color, #007cba); border-color: var(--ac-accent-color, #007cba); font-size: 12px; margin-bottom: ${showAmazonLink ? '6px' : '0'};">Add to Cart</button>
-                        ${showAmazonLink ? `<div style="text-align: center; margin-top: 8px;"><a href="https://www.amazon.com/dp/${product.asin.trim()}?tag=${ASSOCIATE_TAG}" target="_blank" rel="noopener noreferrer" style="font-size: 11px; color: #666; text-decoration: none;"><i class="bi bi-box-arrow-up-right"></i> Amazon</a></div>` : ''}
+                        <button class="btn btn-primary btn-sm w-100" onclick="addToCart(${product.id}, false)" style="background-color: var(--ac-accent-color, #007cba); border-color: var(--ac-accent-color, #007cba); font-size: 12px; margin-bottom: 8px;">Add to Cart</button>
+                        <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee;">
+                            <a href="https://www.amazon.com/dp/${product.asin.trim()}?tag=${ASSOCIATE_TAG}" target="_blank" rel="noopener noreferrer" style="font-size: 11px; color: #666; text-decoration: none;"><span class="dashicons dashicons-external" style="display: inline; width: auto; height: auto; font-size: 11px;"></span> View Price on Amazon</a>
+                            <p style="font-size: 10px; color: #999; margin: 6px 0 0 0; line-height: 1.2;">As an Amazon Associate I earn from qualifying purchases.</p>
+                        </div>
                     </div>
                 `;
                 document.body.appendChild(card);
@@ -238,6 +252,33 @@
         });
     }
 
+    // 2. Modal Functions (vanilla JS, no Bootstrap)
+    window.showCartModal = function() {
+        const cartModal = document.getElementById('cartModal');
+        if (cartModal) {
+            cartModal.style.display = 'flex';
+            cartModal.classList.add('show');
+            document.body.style.overflow = 'hidden';
+        }
+    };
+
+    window.closeCartModal = function() {
+        const cartModal = document.getElementById('cartModal');
+        if (cartModal) {
+            cartModal.style.display = 'none';
+            cartModal.classList.remove('show');
+            document.body.style.overflow = 'auto';
+        }
+    };
+
+    // Close modal when clicking outside the dialog
+    document.addEventListener('click', function(event) {
+        const cartModal = document.getElementById('cartModal');
+        if (event.target === cartModal) {
+            window.closeCartModal();
+        }
+    });
+
     // 3. Add to Cart
     window.addToCart = function(productId, showModal = true) {
         const product = products.find(p => p.id == productId);
@@ -267,7 +308,7 @@
             }
             
             // For menu carts, shake the icon
-            const menuCart = document.querySelector('.ac-menu-cart .bi-cart');
+            const menuCart = document.querySelector('.ac-menu-cart .dashicons-cart');
             if (menuCart) {
                 menuCart.classList.add('ac-shake');
                 setTimeout(() => menuCart.classList.remove('ac-shake'), 500);
@@ -281,8 +322,7 @@
         
         // Open modal automatically when item is added (unless disabled)
         if (showModal) {
-            const cartModal = new bootstrap.Modal(document.getElementById('cartModal'));
-            cartModal.show();
+            window.showCartModal();
         }
     };
 
@@ -340,11 +380,16 @@
             alertDiv.style.display = 'none';
         }
 
+        const apiEnabled = affilicart_data.api_enabled || false;
         let grandTotal = 0;
         cartItemsList.innerHTML = cart.map(item => {
-            const priceNum = parseFloat(item.price.replace(/[$,]/g, '')) || 0;
-            const subtotal = priceNum * item.quantity;
-            grandTotal += subtotal;
+            let priceContent = '';
+            if (apiEnabled && item.price) {
+                const priceNum = parseFloat(item.price.replace(/[$,]/g, '')) || 0;
+                const subtotal = priceNum * item.quantity;
+                grandTotal += subtotal;
+                priceContent = `<div class="fw-bold">$${subtotal.toFixed(2)}</div>`;
+            }
             return `
                 <li class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
                     <div style="display: flex; align-items: center; gap: 12px;">
@@ -359,20 +404,20 @@
                         </div>
                     </div>
                     <div class="text-end">
-                        <div class="fw-bold">$${subtotal.toFixed(2)}</div>
-                        <i class="bi bi-x-circle ac-remove-item" onclick="removeFromCart(${item.id})"></i>
+                        ${priceContent}
+                        <span class="dashicons dashicons-no ac-remove-item" onclick="removeFromCart(${item.id})" style="cursor: pointer;"></span>
                     </div>
                 </li>
             `;
         }).join('');
 
         if (cart.length === 0) cartItemsList.innerHTML = '<li class="text-center py-3 text-muted">Cart is empty</li>';
-        if (totalElement) totalElement.innerText = `Total: $${grandTotal.toFixed(2)}`;
+        if (totalElement && apiEnabled) totalElement.innerText = `Total: $${grandTotal.toFixed(2)}`;
     }
 
     // 7. Price Info Tooltips
     function initPriceTooltips() {
-        document.querySelectorAll('.bi-info-circle:not([data-tooltip-init])').forEach(icon => {
+        document.querySelectorAll('.dashicons-info:not([data-tooltip-init])').forEach(icon => {
             icon.setAttribute('data-tooltip-init', 'true');
             
             icon.addEventListener('mouseenter', function(e) {
@@ -383,7 +428,8 @@
                 
                 const tooltip = document.createElement('div');
                 tooltip.className = 'ac-price-tooltip';
-                tooltip.textContent = 'Price is accurate as of the time of adding to the site and may differ at checkout';
+                const priceDate = this.getAttribute('data-price-date') || 'Unknown date';
+                tooltip.textContent = 'Price updated: ' + priceDate;
                 tooltip.style.cssText = `
                     position: fixed;
                     background: #333;
@@ -447,21 +493,18 @@
         initPriceTooltips();
         updateCart();
 
-        // Determine cart display type
+        // Determine cart position and inject floating cart if needed
         const isDivi = affilicart_data.is_divi;
-        const cartDisplay = affilicart_data.cart_display;
+        const cartPosition = affilicart_data.cart_position || (isDivi ? 'divi-menu' : 'bottom-right');
         
-        // Resolve 'auto' to actual display type
-        let displayType = cartDisplay;
-        if (displayType === 'auto') {
-            displayType = isDivi ? 'menu' : 'floating';
-        }
+        // Define valid floating positions
+        const floatingPositions = ['top-left', 'top-right', 'bottom-left', 'bottom-right'];
         
-        // Inject floating cart ONLY if display type is explicitly set to 'floating'
-        // Don't inject anything if 'menu' - the PHP filter handles menu injection
-        if (displayType === 'floating') {
+        // Inject floating cart ONLY if position is a floating position
+        // Don't inject anything if 'divi-menu' - the PHP footer action handles Divi menu injection
+        if (floatingPositions.includes(cartPosition)) {
             if (!document.getElementById('ac-floating-cart')) {
-                const floatingCartHtml = '<div id="ac-floating-cart"><a href="#" data-bs-toggle="modal" data-bs-target="#cartModal" title="Shopping Cart"><i class="bi bi-cart"></i> <span id="cart-count">0</span></a></div>';
+                const floatingCartHtml = '<div id="ac-floating-cart"><a href="#" onclick="showCartModal(); return false;" title="Shopping Cart"><span class="dashicons dashicons-cart"></span> <span id="cart-count">0</span></a></div>';
                 document.body.insertAdjacentHTML('beforeend', floatingCartHtml);
                 
                 // Position the floating cart based on setting
@@ -472,7 +515,7 @@
                 const adminBar = document.getElementById('wpadminbar');
                 const adminBarHeight = adminBar ? 32 : 0;
                 
-                switch (CART_POSITION) {
+                switch (cartPosition) {
                     case 'top-left':
                         positionStyles += ` top: ${20 + adminBarHeight}px; left: 20px;`;
                         break;
@@ -549,10 +592,34 @@
                     url += `ASIN.${i + 1}=${item.asin.trim()}&Quantity.${i + 1}=${item.quantity}&`;
                 });
                 url += `AssociateTag=${ASSOCIATE_TAG}`;
-                window.open(url, '_blank');
+                checkoutOnAmazon(url);
             });
         }
     }
+    
+    // Deep link handler for Amazon shopping cart
+    window.checkoutOnAmazon = function(cartUrl) {
+        const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+        if (isMobile) {
+            // Strategy: Attempt to trigger the Amazon app-specific protocol.
+            // If the app opens, the timer pauses. If the timer finishes, we redirect to browser.
+            const start = Date.now();
+            
+            // Attempt to trigger the Amazon app-specific protocol
+            window.location.href = cartUrl.replace('https://', 'amazon://');
+
+            setTimeout(() => {
+                // If we're still on this page after 500ms, the app didn't open.
+                if (Date.now() - start < 1000) {
+                    window.location.href = cartUrl; // Fallback to standard browser cart
+                }
+            }, 500);
+        } else {
+            // Desktop just opens in a new tab
+            window.open(cartUrl, '_blank');
+        }
+    };
     
     // Run on DOMContentLoaded
     document.addEventListener('DOMContentLoaded', initAffiliCart);

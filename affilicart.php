@@ -1,23 +1,50 @@
 <?php
 /**
- * Plugin Name: Affilicart Affiliate Manager
+ * Plugin Name: Affilicart Light
+ * Plugin URI: https://affilicartpro.com
  * Description: A simple Amazon Affiliate product manager with settings and menu cart.
  * Version: 1.3
- * Author: Your Name
+ * Author: Michael Macfadden
+ * Author URI: https://mmacfadden.com
+ * License: GPL v2 or later
+ * License URI: https://www.gnu.org/licenses/gpl-2.0.html
+ * Text Domain: affilicart
+ * Domain Path: /languages
  */
 
-if ( ! defined( 'ABSPATH' ) ) exit;
+if ( ! defined( 'ABSPATH' ) ) {
+    exit;
+}
+
+// Define plugin constants
+define( 'AFFILICART_VERSION', '1.3' );
+define( 'AFFILICART_PRO_ACTIVE', defined( 'AFFILICART_PRO_VERSION' ) );
 
 // Activation Hook - Register post types and flush rewrite rules
 register_activation_hook( __FILE__, function() {
     affilicart_register_post_type();
     affilicart_register_taxonomies();
     flush_rewrite_rules();
+    
+    // Set default accent color if not already set
+    if ( ! get_option( 'affilicart_accent_color' ) ) {
+        add_option( 'affilicart_accent_color', '#0073aa' );
+    }
 });
+
+// Fix any incorrect accent color values on admin load
+add_action('admin_init', function() {
+    $accent_color = get_option('affilicart_accent_color');
+    // If accent color is set but invalid, fix it
+    if ( !empty($accent_color) && !preg_match('/^#[a-fA-F0-9]{6}$/', $accent_color) ) {
+        update_option('affilicart_accent_color', '#0073aa');
+    }
+}, 1); // Run early before other admin_init hooks
 
 // 1. Register Custom Post Type
 function affilicart_register_post_type() {
-    $custom_slug = get_option('affilicart_post_slug', 'product');
+    // For Pro users, allow custom slug. For free users, always use 'product'
+    $custom_slug = AFFILICART_PRO_ACTIVE ? get_option('affilicart_post_slug', 'product') : 'product';
     $args = array(
         'labels' => array(
             'name' => 'Products',
@@ -37,8 +64,13 @@ function affilicart_register_post_type() {
 }
 add_action( 'init', 'affilicart_register_post_type' );
 
-// 1a. Register Custom Taxonomies
+// 1a. Register Custom Taxonomies (Pro Feature)
 function affilicart_register_taxonomies() {
+    // Only register categories if Pro is active
+    if ( ! AFFILICART_PRO_ACTIVE ) {
+        return;
+    }
+    
     // Product Category Taxonomy
     register_taxonomy( 'amazon_product_category', 'amazon_product', array(
         'labels' => array(
@@ -50,24 +82,13 @@ function affilicart_register_taxonomies() {
         'hierarchical' => true,
         'rewrite' => array( 'slug' => 'product-category' ),
     ) );
-    
-    // Product Tag Taxonomy
-    register_taxonomy( 'amazon_product_tag', 'amazon_product', array(
-        'labels' => array(
-            'name' => 'Product Tags',
-            'singular_name' => 'Product Tag',
-        ),
-        'public' => true,
-        'show_in_rest' => true,
-        'hierarchical' => false,
-        'rewrite' => array( 'slug' => 'product-tag' ),
-    ) );
 }
 add_action( 'init', 'affilicart_register_taxonomies', 11 );
 
 // Add custom rewrite rule for product category archives (/product/category/category-name/)
 add_action( 'init', function() {
-    $custom_slug = get_option( 'affilicart_post_slug', 'product' );
+    // For Pro users, allow custom slug. For free users, always use 'product'
+    $custom_slug = AFFILICART_PRO_ACTIVE ? get_option( 'affilicart_post_slug', 'product' ) : 'product';
     
     // Add rewrite rule for /product/category/category-name/
     add_rewrite_rule(
@@ -102,64 +123,6 @@ register_deactivation_hook( __FILE__, function() {
     flush_rewrite_rules();
 });
 
-// 1b. Migration Function - Migrate old categories to custom taxonomy
-function affilicart_migrate_categories() {
-    // Get all amazon_product posts
-    $args = array(
-        'post_type' => 'amazon_product',
-        'posts_per_page' => -1,
-        'post_status' => 'publish'
-    );
-    $query = new WP_Query( $args );
-    
-    if ( $query->have_posts() ) {
-        while ( $query->have_posts() ) {
-            $query->the_post();
-            $product_id = get_the_ID();
-            
-            // Get terms from the old 'category' taxonomy
-            $old_terms = wp_get_object_terms( $product_id, 'category', array( 'fields' => 'names' ) );
-            
-            if ( ! is_wp_error( $old_terms ) && ! empty( $old_terms ) ) {
-                // Check if product already has terms in the new taxonomy
-                $new_terms = wp_get_object_terms( $product_id, 'amazon_product_category', array( 'fields' => 'ids' ) );
-                
-                // Only migrate if no terms in new taxonomy yet
-                if ( is_wp_error( $new_terms ) || empty( $new_terms ) ) {
-                    // Assign old category terms to new taxonomy
-                    wp_set_object_terms( $product_id, $old_terms, 'amazon_product_category', false );
-                }
-            }
-        }
-        wp_reset_postdata();
-    }
-}
-
-// Run migration on admin_init if not done yet
-add_action( 'admin_init', function() {
-    if ( ! get_option( 'affilicart_categories_migrated' ) ) {
-        affilicart_migrate_categories();
-        update_option( 'affilicart_categories_migrated', '1' );
-    }
-});
-
-// AJAX handler for manual migration
-add_action( 'wp_ajax_affilicart_migrate_categories_ajax', function() {
-    check_ajax_referer( 'affilicart_migrate_nonce' );
-    
-    if ( ! current_user_can( 'manage_options' ) ) {
-        wp_send_json_error( array( 'message' => 'Insufficient permissions.' ) );
-    }
-    
-    // Run migration
-    affilicart_migrate_categories();
-    
-    // Mark as migrated
-    update_option( 'affilicart_categories_migrated', '1' );
-    
-    wp_send_json_success( array( 'message' => 'Product categories have been successfully migrated to the new system!' ) );
-});
-
 // 2. Filter to exclude product categories from regular site categories
 add_filter( 'get_terms_args', function( $args, $taxonomies ) {
     // If querying regular categories, exclude product categories
@@ -189,9 +152,9 @@ add_action( 'add_meta_boxes', function() {
 // Save Product Description
 add_action( 'save_post', function( $post_id ) {
     if ( get_post_type( $post_id ) !== 'amazon_product' ) return;
-    if ( !isset( $_POST['product_description_nonce'] ) || !wp_verify_nonce( $_POST['product_description_nonce'], 'product_description_nonce' ) ) return;
+    if ( !isset( $_POST['product_description_nonce'] ) || !wp_verify_nonce( sanitize_key( $_POST['product_description_nonce'] ), 'product_description_nonce' ) ) return;
     if ( isset( $_POST['product_description'] ) ) {
-        update_post_meta( $post_id, 'product_description', sanitize_textarea_field( $_POST['product_description'] ) );
+        update_post_meta( $post_id, 'product_description', sanitize_textarea_field( wp_unslash( $_POST['product_description'] ) ) );
     }
 });
 
@@ -199,7 +162,11 @@ add_action( 'save_post', function( $post_id ) {
 add_action( 'edit_form_top', function( $post ) {
     if ( $post->post_type === 'amazon_product' ) {
         echo '<div style="background: #f0f6fc; border-left: 4px solid #007cba; padding: 15px; margin: 20px 0; border-radius: 3px;">';
-        echo '<strong>💡 Need help?</strong> Visit <strong>Products → Settings → How To</strong> for a complete guide.';
+        echo '<strong>💡 ' . esc_html__( 'Need help?', 'affilicart' ) . '</strong> ' . esc_html__( 'Visit', 'affilicart' ) . ' <strong>' . esc_html__( 'Products → Settings → How To', 'affilicart' ) . '</strong> ' . esc_html__( 'for a complete guide.', 'affilicart' );
+        echo '</div>';
+        
+        echo '<div style="background: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0; border-radius: 3px;">';
+        echo '<strong>⚠️ ' . esc_html__( 'Image Rights', 'affilicart' ) . '</strong> ' . esc_html__( 'You must own the rights to or have permission to use any images uploaded to this product. Do not use images without proper licensing or permission.', 'affilicart' );
         echo '</div>';
     }
 });
@@ -262,10 +229,23 @@ add_filter('manage_amazon_product_posts_columns', function($columns) {
     $columns['affilicart_shortcode'] = 'Shortcode';
     return $columns;
 });
+
+// Adjust column widths
+add_action('admin_head', function() {
+    $screen = get_current_screen();
+    if ($screen && $screen->post_type === 'amazon_product' && $screen->base === 'edit') {
+        echo '<style>
+            .wp-list-table .column-title { width: 15%; }
+            .wp-list-table .column-affilicart_shortcode { width: 70%; }
+        </style>';
+    }
+});
+
 add_action('manage_amazon_product_posts_custom_column', function($column, $post_id) {
     if ($column === 'affilicart_shortcode') {
         $grid_shortcode = '[affilicart_grid id="' . $post_id . '"]';
         $button_shortcode = '[affilicart_button id="' . $post_id . '"]';
+        $link_shortcode = '[affilicart_link id="' . $post_id . '"]';
         
         echo '<div style="display: flex; gap: 20px;">';
         
@@ -273,7 +253,7 @@ add_action('manage_amazon_product_posts_custom_column', function($column, $post_
         echo '<div>';
         echo '<div style="font-size: 12px; color: #666; margin-bottom: 4px;"><strong>Grid:</strong></div>';
         echo '<div style="display: flex; align-items: center; gap: 8px;">';
-        echo '<code style="background:#eee; padding:5px; border-radius:3px;" id="affilicart-grid-' . $post_id . '">' . $grid_shortcode . '</code>';
+        echo '<code style="background:#eee; padding:5px; border-radius:3px;" id="affilicart-grid-' . esc_attr($post_id) . '">' . esc_html($grid_shortcode) . '</code>';
         echo '<button type="button" style="background: none; border: none; cursor: pointer; padding: 0; color: #666666; font-size: 16px;" onclick="copyToClipboard(\'' . esc_attr($grid_shortcode) . '\', this)" title="Copy grid shortcode">';
         echo '<span class="dashicons dashicons-admin-page"></span>';
         echo '</button>';
@@ -284,8 +264,19 @@ add_action('manage_amazon_product_posts_custom_column', function($column, $post_
         echo '<div>';
         echo '<div style="font-size: 12px; color: #666; margin-bottom: 4px;"><strong>Button:</strong></div>';
         echo '<div style="display: flex; align-items: center; gap: 8px;">';
-        echo '<code style="background:#eee; padding:5px; border-radius:3px;" id="affilicart-button-' . $post_id . '">' . $button_shortcode . '</code>';
+        echo '<code style="background:#eee; padding:5px; border-radius:3px;" id="affilicart-button-' . esc_attr($post_id) . '">' . esc_html($button_shortcode) . '</code>';
         echo '<button type="button" style="background: none; border: none; cursor: pointer; padding: 0; color: #666666; font-size: 16px;" onclick="copyToClipboard(\'' . esc_attr($button_shortcode) . '\', this)" title="Copy button shortcode">';
+        echo '<span class="dashicons dashicons-admin-page"></span>';
+        echo '</button>';
+        echo '</div>';
+        echo '</div>';
+        
+        // Link Shortcode
+        echo '<div>';
+        echo '<div style="font-size: 12px; color: #666; margin-bottom: 4px;"><strong>Link:</strong></div>';
+        echo '<div style="display: flex; align-items: center; gap: 8px;">';
+        echo '<code style="background:#eee; padding:5px; border-radius:3px;" id="affilicart-link-' . esc_attr($post_id) . '">' . esc_html($link_shortcode) . '</code>';
+        echo '<button type="button" style="background: none; border: none; cursor: pointer; padding: 0; color: #666666; font-size: 16px;" onclick="copyToClipboard(\'' . esc_attr($link_shortcode) . '\', this)" title="Copy link shortcode">';
         echo '<span class="dashicons dashicons-admin-page"></span>';
         echo '</button>';
         echo '</div>';
@@ -317,17 +308,27 @@ add_action('admin_menu', function() {
 });
 
 function affilicart_settings_html() {
-    $current_tab = isset($_GET['tab']) ? sanitize_text_field($_GET['tab']) : 'settings';
+    if ( !current_user_can( 'manage_options' ) ) {
+        wp_die( esc_html__( 'Unauthorized', 'affilicart' ) );
+    }
+    // Get current tab from GET parameter (nonce verification handled by Settings API for form submissions via options.php)
+    // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+    $current_tab = isset($_GET['tab']) ? sanitize_text_field( wp_unslash( $_GET['tab'] ) ) : 'settings';
     ?>
     <div class="wrap">
-        <h1>Affilicart Settings</h1>
+        <h1><?php esc_html_e( 'Affilicart Settings', 'affilicart' ); ?></h1>
         
         <div class="nav-tab-wrapper" style="border-bottom: 1px solid #ccc; margin-bottom: 20px;">
-            <a href="?post_type=amazon_product&page=affilicart-settings&tab=settings" class="nav-tab <?php echo $current_tab === 'settings' ? 'nav-tab-active' : ''; ?>">Settings</a>
-            <a href="?post_type=amazon_product&page=affilicart-settings&tab=how-to" class="nav-tab <?php echo $current_tab === 'how-to' ? 'nav-tab-active' : ''; ?>">How To</a>
-            <a href="?post_type=amazon_product&page=affilicart-settings&tab=disclaimer" class="nav-tab <?php echo $current_tab === 'disclaimer' ? 'nav-tab-active' : ''; ?>">Disclaimer</a>
+            <a href="?post_type=amazon_product&page=affilicart-settings&tab=settings" class="nav-tab <?php echo esc_attr( $current_tab === 'settings' ? 'nav-tab-active' : '' ); ?>"><?php esc_html_e( 'Settings', 'affilicart' ); ?></a>
+            <a href="?post_type=amazon_product&page=affilicart-settings&tab=how-to" class="nav-tab <?php echo esc_attr( $current_tab === 'how-to' ? 'nav-tab-active' : '' ); ?>"><?php esc_html_e( 'How To', 'affilicart' ); ?></a>
+            <?php if ( AFFILICART_PRO_ACTIVE ) : ?>
+                <a href="?post_type=amazon_product&page=affilicart-settings&tab=api" class="nav-tab <?php echo esc_attr( $current_tab === 'api' ? 'nav-tab-active' : '' ); ?>" style="color: #2fbdb6; font-weight: 600;">⚡ <?php esc_html_e( 'Price Sync', 'affilicart' ); ?></a>
+            <?php endif; ?>
+            <a href="?post_type=amazon_product&page=affilicart-settings&tab=disclaimer" class="nav-tab <?php echo esc_attr( $current_tab === 'disclaimer' ? 'nav-tab-active' : '' ); ?>"><?php esc_html_e( 'Disclaimer', 'affilicart' ); ?></a>
+            <?php if ( ! AFFILICART_PRO_ACTIVE ) : ?>
+                <a href="?post_type=amazon_product&page=affilicart-settings&tab=upgrade" class="nav-tab <?php echo esc_attr( $current_tab === 'upgrade' ? 'nav-tab-active' : '' ); ?>" style="background: linear-gradient(135deg, #2fbdb6 0%, #1a9a94 100%); color: white;">🚀 <?php esc_html_e( 'Upgrade to Pro', 'affilicart' ); ?></a>
+            <?php endif; ?>
         </div>
-        
         <?php if ($current_tab === 'settings'): ?>
             <form method="post" action="options.php">
                 <?php
@@ -336,44 +337,6 @@ function affilicart_settings_html() {
                 submit_button();
                 ?>
             </form>
-            
-            <h3 style="margin-top: 40px; border-top: 1px solid #ccc; padding-top: 20px;">⚙️ Tools</h3>
-            <p><strong>Migrate Product Categories:</strong> If you added products with categories before the custom taxonomy update, click the button below to migrate them to the new category system.</p>
-            <button class="button button-primary" onclick="affilicartMigrateCategories()" style="margin-top: 10px;">
-                Migrate Categories Now
-            </button>
-            <div id="migration-status" style="margin-top: 15px; padding: 10px; border-radius: 3px; display: none;"></div>
-            
-            <script>
-            function affilicartMigrateCategories() {
-                const button = event.target;
-                const statusDiv = document.getElementById('migration-status');
-                button.disabled = true;
-                button.textContent = 'Migrating...';
-                statusDiv.style.display = 'none';
-                
-                jQuery.post(ajaxurl, {
-                    action: 'affilicart_migrate_categories_ajax',
-                    nonce: '<?php echo wp_create_nonce('affilicart_migrate_nonce'); ?>'
-                }, function(response) {
-                    button.disabled = false;
-                    button.textContent = 'Migrate Categories Now';
-                    
-                    if (response.success) {
-                        statusDiv.style.backgroundColor = '#d4edda';
-                        statusDiv.style.color = '#155724';
-                        statusDiv.style.borderLeft = '4px solid #28a745';
-                        statusDiv.innerHTML = '<strong>✓ Success!</strong> ' + response.data.message;
-                    } else {
-                        statusDiv.style.backgroundColor = '#f8d7da';
-                        statusDiv.style.color = '#721c24';
-                        statusDiv.style.borderLeft = '4px solid #d63638';
-                        statusDiv.innerHTML = '<strong>✗ Error:</strong> ' + response.data.message;
-                    }
-                    statusDiv.style.display = 'block';
-                }, 'json');
-            }
-            </script>
         <?php elseif ($current_tab === 'how-to'): ?>
             <div style="max-width: 900px;">
                 <h2>How To Use Affilicart</h2>
@@ -383,9 +346,9 @@ function affilicart_settings_html() {
                 <ul style="line-height: 1.8;">
                     <li><strong>Product URL Slug:</strong> Customize the URL path for your product pages. Default is "product" (URLs look like /product/product-name). You can change this to any word you prefer, like "item", "equipment", or "gear". After changing, visit Settings → Permalinks and save to apply the change.</li>
                     <li><strong>Amazon Associate ID:</strong> Your unique tracking ID from Amazon Associates (required for earning commissions)</li>
-                    <li><strong>Accent Color:</strong> Customize button colors to match your site's branding</li>
-                    <li><strong>Divi Menu Cart:</strong> If using Divi theme, enable to show a shopping cart icon in your menu</li>
-                    <li><strong>Image Lightbox:</strong> When enabled, clicking product images opens a fullscreen viewer with high-resolution images</li>
+                    <li><strong>Accent Color:</strong> <strong>Pro feature:</strong> Customize button colors to match your site's branding</li>
+                    <li><strong>Cart Position & Display:</strong> <strong>Pro feature:</strong> Configure cart visibility and placement on your site</li>
+                    <li><strong>Image Lightbox:</strong> <strong>Pro feature:</strong> When enabled, clicking product images on single product pages opens a fullscreen viewer with high-resolution images</li>
                 </ul>
                 
                 <h3>📝 Step 2: Add Products</h3>
@@ -640,107 +603,380 @@ function affilicart_settings_html() {
                 </ul>
                 <p><strong>If you do not agree, you must discontinue use immediately.</strong></p>
             </div>
+        <?php elseif ($current_tab === 'upgrade' && ! AFFILICART_PRO_ACTIVE): ?>
+            <div style="max-width: 900px;">
+                <h2>🚀 Upgrade to Affilicart Pro</h2>
+                
+                <div style="background: linear-gradient(135deg, #2fbdb6 0%, #1a9a94 100%); color: white; padding: 30px; border-radius: 8px; margin: 20px 0;">
+                    <h3 style="color: white; margin-top: 0;">Unlock Premium Features</h3>
+                    <p style="font-size: 16px;">Upgrade to Affilicart Pro to unlock premium customization and organization features.</p>
+                </div>
+                
+                <h3>Free vs Pro Comparison</h3>
+                <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+                    <thead>
+                        <tr style="background: #f0f0f0;">
+                            <th style="padding: 12px; text-align: left; border: 1px solid #ddd;"><strong>Feature</strong></th>
+                            <th style="padding: 12px; text-align: center; border: 1px solid #ddd;"><strong>Free</strong></th>
+                            <th style="padding: 12px; text-align: center; border: 1px solid #ddd;"><strong>Pro</strong></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #ddd;">Number of Products</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;"><strong>Unlimited</strong></td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;"><strong style="color: #2fbdb6;">Unlimited</strong></td>
+                        </tr>
+                        <tr style="background: #fafafa;">
+                            <td style="padding: 12px; border: 1px solid #ddd;">Shopping Cart</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">✓</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">✓</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #ddd;">Product Images</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">✓</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">✓</td>
+                        </tr>
+                        <tr style="background: #fafafa;">
+                            <td style="padding: 12px; border: 1px solid #ddd;">Amazon Affiliate Links</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">✓</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">✓</td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #ddd;">Image Lightbox</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">—</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;"><strong style="color: #2fbdb6;">✓</strong></td>
+                        </tr>
+                        <tr style="background: #fafafa;">
+                            <td style="padding: 12px; border: 1px solid #ddd;">Product Categories</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">—</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;"><strong style="color: #2fbdb6;">✓</strong></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #ddd;">Single Product Pages</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">—</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;"><strong style="color: #2fbdb6;">✓</strong></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #ddd;">Custom Accent Color</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">—</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;"><strong style="color: #2fbdb6;">✓</strong></td>
+                        </tr>
+                        <tr style="background: #fafafa;">
+                            <td style="padding: 12px; border: 1px solid #ddd;">Cart Display Options</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">—</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;"><strong style="color: #2fbdb6;">✓</strong></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #ddd;">Automatic Price Sync (with API Keys)</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">—</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;"><strong style="color: #2fbdb6;">✓</strong></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 12px; border: 1px solid #ddd;">Priority Support</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;">—</td>
+                            <td style="padding: 12px; text-align: center; border: 1px solid #ddd;"><strong style="color: #2fbdb6;">✓</strong></td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <p style="color: #666; font-size: 13px;">Pro features help you organize and customize your affiliate store for better user experience.</p>
+                
+                <h3 style="margin-top: 40px;">Get Affilicart Pro</h3>
+                <p>Ready to scale your affiliate store? Click the button below to get Affilicart Pro and unlock unlimited products:</p>
+                
+                <button disabled class="button button-primary" style="padding: 15px 40px; font-size: 16px; background: #cccccc; border: none; color: #666666; margin-top: 15px; display: inline-block; cursor: not-allowed; opacity: 0.6;">
+                    Coming Soon
+                </button>
+                
+                <p style="margin-top: 30px; padding: 15px; background: #d4edda; border-left: 4px solid #28a745; border-radius: 3px; color: #155724;">
+                    <strong>💡 Tip:</strong> Pro is installed as a separate plugin. After purchasing, download it from your account and install it alongside the free version. The Pro plugin will automatically unlock all premium features.
+                </p>
+            </div>
+        <?php elseif ($current_tab === 'api' && AFFILICART_PRO_ACTIVE): ?>
+            <div style="max-width: 900px;">
+                <h2>⚡ Amazon Price Sync</h2>
+                
+                <div style="background: #f0f7ff; border-left: 4px solid #2fbdb6; padding: 15px; border-radius: 3px; margin: 20px 0;">
+                    <p><strong>Live Price Updates:</strong> Connect your Amazon Product Advertising API credentials to automatically sync product prices from Amazon every 24 hours. This ensures your affiliate products always show current pricing.</p>
+                </div>
+                
+                <form method="post" action="options.php">
+                    <?php settings_fields('affilicart_pro_api_group'); ?>
+                    
+                    <table class="form-table">
+                        <tr>
+                            <th scope="row">
+                                <label for="affilicart_api_enabled">
+                                    <input type="checkbox" id="affilicart_api_enabled" name="affilicart_api_enabled" value="1" <?php checked(get_option('affilicart_api_enabled'), 1); ?> />
+                                    <strong>Enable Price Sync</strong>
+                                </label>
+                            </th>
+                            <td>
+                                <p class="description">Check to enable automatic price updates from Amazon API.</p>
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <th scope="row">
+                                <label for="affilicart_api_key">Amazon API Key</label>
+                            </th>
+                            <td>
+                                <input type="text" id="affilicart_api_key" name="affilicart_api_key" value="<?php echo esc_attr(get_option('affilicart_api_key')); ?>" class="regular-text" />
+                                <p class="description">Your Amazon Product Advertising API Access Key ID.</p>
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <th scope="row">
+                                <label for="affilicart_api_secret">Amazon API Secret</label>
+                            </th>
+                            <td>
+                                <input type="password" id="affilicart_api_secret" name="affilicart_api_secret" value="<?php echo esc_attr(get_option('affilicart_api_secret')); ?>" class="regular-text" placeholder="••••••••••••••••" />
+                                <p class="description">Your Amazon Product Advertising API Secret Access Key. (Hidden for security)</p>
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <th scope="row">
+                                <label for="affilicart_api_region">API Region</label>
+                            </th>
+                            <td>
+                                <select id="affilicart_api_region" name="affilicart_api_region" class="regular-text">
+                                    <option value="us" <?php selected(get_option('affilicart_api_region'), 'us'); ?>>United States (US)</option>
+                                    <option value="ca" <?php selected(get_option('affilicart_api_region'), 'ca'); ?>>Canada (CA)</option>
+                                    <option value="uk" <?php selected(get_option('affilicart_api_region'), 'uk'); ?>>United Kingdom (UK)</option>
+                                    <option value="de" <?php selected(get_option('affilicart_api_region'), 'de'); ?>>Germany (DE)</option>
+                                    <option value="fr" <?php selected(get_option('affilicart_api_region'), 'fr'); ?>>France (FR)</option>
+                                    <option value="jp" <?php selected(get_option('affilicart_api_region'), 'jp'); ?>>Japan (JP)</option>
+                                </select>
+                                <p class="description">The AWS region where your API credentials are configured. This should match your associate store region.</p>
+                            </td>
+                        </tr>
+                        
+                        <tr>
+                            <th scope="row">Sync Status</th>
+                            <td>
+                                <?php 
+                                $last_sync = get_option('affilicart_api_last_sync');
+                                if ($last_sync) {
+                                    $date = date_i18n(get_option('date_format') . ' ' . get_option('time_format'), $last_sync);
+                                    echo '<p style="color: #27ae60;"><strong>✓ Last sync:</strong> ' . esc_html($date) . '</p>';
+                                } else {
+                                    echo '<p style="color: #999;">No sync attempts yet. Sync will run automatically every 24 hours after saving.</p>';
+                                }
+                                ?>
+                            </td>
+                        </tr>
+                    </table>
+                    
+                    <div style="margin: 20px 0; padding: 15px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 3px;">
+                        <p><strong>⚠️ Setup Required:</strong> Before enabling price sync, you must have:</p>
+                        <ul style="margin-left: 20px;">
+                            <li>An active <a href="https://affiliate-program.amazon.com/" target="_blank" rel="noopener noreferrer">Amazon Associates account</a></li>
+                            <li>Registered your Amazon Product Advertising API credentials</li>
+                            <li>Configured your API Key, Secret, and Associate ID with Amazon</li>
+                        </ul>
+                    </div>
+                    
+                    <?php submit_button('Save API Settings'); ?>
+                </form>
+            </div>
         <?php endif; ?>
     </div>
     <?php
 }
 
 add_action('admin_init', function() {
-    register_setting('affilicart_settings_group', 'affilicart_associate_id');
-    register_setting('affilicart_settings_group', 'affilicart_accent_color');
-    register_setting('affilicart_settings_group', 'affilicart_divi_cart');
-    register_setting('affilicart_settings_group', 'affilicart_cart_display');
-    register_setting('affilicart_settings_group', 'affilicart_cart_position');
-    register_setting('affilicart_settings_group', 'affilicart_lightbox');
-    register_setting('affilicart_settings_group', 'affilicart_post_slug');
+    register_setting('affilicart_settings_group', 'affilicart_associate_id', array(
+        'type' => 'string',
+        'sanitize_callback' => 'sanitize_text_field',
+        'default' => 'yourtag-20'
+    ));
+    register_setting('affilicart_settings_group', 'affilicart_accent_color', array(
+        'type' => 'string',
+        'sanitize_callback' => function($value) {
+            if (empty($value)) return '#0073aa';
+            // Validate it's a hex color
+            if (preg_match('/^#[a-fA-F0-9]{6}$/', $value)) {
+                return $value;
+            }
+            return '#0073aa';
+        },
+        'default' => '#0073aa'
+    ));
+    register_setting('affilicart_settings_group', 'affilicart_cart_position', array(
+        'type' => 'string',
+        'sanitize_callback' => function($value) {
+            $is_divi = function_exists('et_setup_theme') || defined('ET_BUILDER_PLUGIN_VERSION');
+            $valid = array('top-left', 'top-right', 'bottom-left', 'bottom-right');
+            if ($is_divi) {
+                $valid[] = 'divi-menu';
+            }
+            if (in_array($value, $valid)) {
+                return $value;
+            }
+            return $is_divi ? 'divi-menu' : 'bottom-right';
+        },
+        'default' => 'bottom-right'
+    ));
+    register_setting('affilicart_settings_group', 'affilicart_lightbox', array(
+        'type' => 'boolean',
+        'sanitize_callback' => function($value) {
+            return (bool) $value;
+        },
+        'default' => true
+    ));
+    register_setting('affilicart_settings_group', 'affilicart_post_slug', array(
+        'type' => 'string',
+        'sanitize_callback' => function($value) {
+            if (empty($value)) return 'product';
+            // Allow only lowercase letters, numbers, and hyphens
+            $sanitized = strtolower(preg_replace('/[^a-z0-9-]/', '', $value));
+            return $sanitized ?: 'product';
+        },
+        'default' => 'product'
+    ));
+    
+    // Register API settings (Pro feature)
+    register_setting('affilicart_pro_api_group', 'affilicart_api_enabled', array(
+        'type' => 'boolean',
+        'sanitize_callback' => function($value) {
+            return (bool) $value;
+        },
+        'default' => false
+    ));
+    register_setting('affilicart_pro_api_group', 'affilicart_api_key', array(
+        'type' => 'string',
+        'sanitize_callback' => 'sanitize_text_field',
+        'default' => ''
+    ));
+    register_setting('affilicart_pro_api_group', 'affilicart_api_secret', array(
+        'type' => 'string',
+        'sanitize_callback' => 'sanitize_text_field',
+        'default' => ''
+    ));
+    register_setting('affilicart_pro_api_group', 'affilicart_api_region', array(
+        'type' => 'string',
+        'sanitize_callback' => function($value) {
+            $valid_regions = array('us', 'ca', 'mx', 'uk', 'de', 'fr', 'it', 'es', 'in', 'jp', 'au');
+            return in_array($value, $valid_regions) ? $value : 'us';
+        },
+        'default' => 'us'
+    ));
+    
+    
     add_settings_section('affilicart_main_section', 'Main Settings', null, 'affilicart-settings');
-    add_settings_field('affilicart_post_slug', 'Product URL Slug', function() {
-        $slug = get_option('affilicart_post_slug', 'product');
-        echo '<input type="text" name="affilicart_post_slug" value="' . esc_attr($slug) . '" class="regular-text">';
-        echo '<p class="description">Customize the URL path for product pages. Default: "product" (URLs will be like /product/product-name). Use only lowercase letters, numbers, and hyphens.</p>';
-        echo '<p class="description"><strong>Note:</strong> After changing this, you may need to visit Settings → Permalinks and save to update WordPress rewrite rules.</p>';
-    }, 'affilicart-settings', 'affilicart_main_section');
+    
     add_settings_field('affilicart_associate_id', 'Amazon Associate ID', function() {
         $id = get_option('affilicart_associate_id', 'yourtag-20');
         echo '<input type="text" name="affilicart_associate_id" value="' . esc_attr($id) . '" class="regular-text">';
         echo '<p class="description">Enter your Amazon Associates tracking ID here.</p>';
     }, 'affilicart-settings', 'affilicart_main_section');
-    add_settings_field('affilicart_accent_color', 'Accent Color', function() {
-        $color = get_option('affilicart_accent_color', '#007cba');
-        echo '<div style="display: flex; align-items: center; gap: 10px;">';
-        echo '<input type="text" name="affilicart_accent_color" value="' . esc_attr($color) . '" id="affilicart_hex_input" placeholder="#007cba" style="width: 120px; font-family: monospace; padding: 8px; border: 1px solid #ccc; border-radius: 3px;" maxlength="7">';
-        echo '<input type="color" id="affilicart_accent_color" style="width: 50px; height: 40px; cursor: pointer; border: 1px solid #ccc; border-radius: 3px;">';
-        echo '<button type="button" class="button" onclick="document.getElementById(\'affilicart_hex_input\').value = \'#007cba\'; document.getElementById(\'affilicart_accent_color\').value = \'#007cba\';">Reset to Default</button>';
-        echo '</div>';
-        echo '<p class="description">Enter hex code directly or use the color picker. Default: WordPress Blue (#007cba).</p>';
-        echo '<script>
-            const hexInput = document.getElementById("affilicart_hex_input");
-            const colorPicker = document.getElementById("affilicart_accent_color");
-            
-            // Set initial color picker value
-            colorPicker.value = hexInput.value || "#007cba";
-            
-            // Update color picker when hex input changes
-            hexInput.addEventListener("input", function() {
-                if (/^#[0-9A-F]{6}$/i.test(this.value)) {
-                    colorPicker.value = this.value;
-                }
-            });
-            
-            // Update hex input when color picker changes
-            colorPicker.addEventListener("input", function() {
-                hexInput.value = this.value;
-            });
-        </script>';
-    }, 'affilicart-settings', 'affilicart_main_section');
-    add_settings_field('affilicart_cart_display', 'Shopping Cart Display', function() {
-        $display = get_option('affilicart_cart_display', 'auto');
-        $is_divi = function_exists('et_setup_theme') || defined('ET_BUILDER_PLUGIN_VERSION');
-        
-        echo '<select name="affilicart_cart_display">';
-        echo '<option value="auto" ' . selected($display, 'auto', false) . '>' . ($is_divi ? 'Auto (Divi Menu)' : 'Auto (Floating Button)') . '</option>';
-        echo '<option value="floating" ' . selected($display, 'floating', false) . '>Floating Button</option>';
-        if ($is_divi) {
-            echo '<option value="menu" ' . selected($display, 'menu', false) . '>Divi Menu</option>';
-        }
-        echo '</select>';
-        echo '<p class="description">Choose how the shopping cart icon is displayed. Floating works on all themes.</p>';
-    }, 'affilicart-settings', 'affilicart_main_section');
-    add_settings_field('affilicart_cart_position', 'Floating Cart Position', function() {
-        $position = get_option('affilicart_cart_position', 'bottom-right');
-        $positions = array(
-            'top-left' => 'Top Left',
-            'top-right' => 'Top Right',
-            'bottom-left' => 'Bottom Left',
-            'bottom-right' => 'Bottom Right'
-        );
-        
-        echo '<div style="display: flex; flex-direction: column; gap: 8px;">';
-        foreach ($positions as $value => $label) {
-            echo '<label style="display: flex; align-items: center; gap: 8px; margin: 0;">';
-            echo '<input type="radio" name="affilicart_cart_position" value="' . esc_attr($value) . '" ' . checked($position, $value, false) . '>';
-            echo $label;
-            echo '</label>';
-        }
-        echo '</div>';
-        echo '<p class="description">Select where the floating cart icon should appear on the page. Only applies when using floating cart display.</p>';
-    }, 'affilicart-settings', 'affilicart_main_section');
-    add_settings_field('affilicart_divi_cart', 'Divi Menu Cart Display', function() {
-        $enabled = get_option('affilicart_divi_cart', false);
-        $is_divi = function_exists('et_setup_theme') || defined('ET_BUILDER_PLUGIN_VERSION');
-        
-        if (!$is_divi) {
-            echo '<p style="color: #d63638;"><strong>⚠️ Divi is not active</strong> — This option only works on Divi sites.</p>';
-            echo '<input type="hidden" name="affilicart_divi_cart" value="0">';
+    add_settings_field('affilicart_post_slug', 'Product URL Slug', function() {
+        if ( AFFILICART_PRO_ACTIVE ) {
+            $slug = get_option('affilicart_post_slug', 'product');
+            echo '<input type="text" name="affilicart_post_slug" value="' . esc_attr($slug) . '" class="regular-text">';
+            echo '<p class="description">Customize the URL path for product pages. Default: "product" (URLs will be like /product/product-name). Use only lowercase letters, numbers, and hyphens.</p>';
+            echo '<p class="description"><strong>Note:</strong> After changing this, you may need to visit Settings → Permalinks and save to update WordPress rewrite rules.</p>';
         } else {
-            echo '<label><input type="checkbox" name="affilicart_divi_cart" value="1" ' . checked($enabled, 1, false) . '> Display cart icon in the Divi menu alongside the search icon</label>';
-            echo '<p class="description">When enabled, the cart icon will appear in your Divi menu with a fixed position so it\'s always visible. (Deprecated: Use "Shopping Cart Display" option above instead)</p>';
+            echo '<div style="padding: 10px; background: #e7f3ff; border-left: 4px solid #2196F3; border-radius: 3px;">';
+            echo '<strong>🔒 ' . esc_html__( 'Premium Feature', 'affilicart' ) . '</strong><br>';
+            echo esc_html__( 'Customize product page URLs with Affilicart Pro. ', 'affilicart' );
+            echo '<a href="' . esc_url( add_query_arg( array( 'post_type' => 'amazon_product', 'page' => 'affilicart-settings', 'tab' => 'upgrade' ), admin_url( 'edit.php' ) ) ) . '" style="color: #2196F3; font-weight: bold;">' . esc_html__( 'Upgrade to Pro →', 'affilicart' ) . '</a>';
+            echo '</div>';
+        }
+    }, 'affilicart-settings', 'affilicart_main_section');
+    add_settings_field('affilicart_accent_color', 'Accent Color', function() {
+        if ( AFFILICART_PRO_ACTIVE ) {
+            $color = get_option('affilicart_accent_color', '#0073aa');
+            echo '<div style="display: flex; align-items: center; gap: 10px;">';
+            echo '<input type="text" name="affilicart_accent_color" value="' . esc_attr($color) . '" id="affilicart_hex_input" placeholder="#0073aa" style="width: 120px; font-family: monospace; padding: 8px; border: 1px solid #ccc; border-radius: 3px;" maxlength="7">';
+            echo '<input type="color" id="affilicart_accent_color" style="width: 50px; height: 40px; cursor: pointer; border: 1px solid #ccc; border-radius: 3px;">';
+            echo '<button type="button" class="button" onclick="document.getElementById(\'affilicart_hex_input\').value = \'#0073aa\'; document.getElementById(\'affilicart_accent_color\').value = \'#0073aa\';">Reset to Default</button>';
+            echo '</div>';
+            echo '<p class="description">Enter hex code directly or use the color picker. Default: WordPress Blue (#0073aa).</p>';
+            echo '<script>
+                const hexInput = document.getElementById("affilicart_hex_input");
+                const colorPicker = document.getElementById("affilicart_accent_color");
+                
+                // Set initial color picker value
+                colorPicker.value = hexInput.value || "#0073aa";
+                
+                // Update color picker when hex input changes
+                hexInput.addEventListener("input", function() {
+                    if (/^#[0-9A-F]{6}$/i.test(this.value)) {
+                        colorPicker.value = this.value;
+                    }
+                });
+                
+                // Update hex input when color picker changes
+                colorPicker.addEventListener("input", function() {
+                    hexInput.value = this.value;
+                });
+            </script>';
+        } else {
+            echo '<div style="padding: 10px; background: #e7f3ff; border-left: 4px solid #2196F3; border-radius: 3px;">';
+            echo '<strong>🔒 ' . esc_html__( 'Premium Feature', 'affilicart' ) . '</strong><br>';
+            echo esc_html__( 'Customize your accent color with Affilicart Pro. ', 'affilicart' );
+            echo '<a href="' . esc_url( add_query_arg( array( 'post_type' => 'amazon_product', 'page' => 'affilicart-settings', 'tab' => 'upgrade' ), admin_url( 'edit.php' ) ) ) . '" style="color: #2196F3; font-weight: bold;">' . esc_html__( 'Upgrade to Pro →', 'affilicart' ) . '</a>';
+            echo '</div>';
+        }
+    }, 'affilicart-settings', 'affilicart_main_section');
+    add_settings_field('affilicart_cart_position', 'Cart Position', function() {
+        if ( AFFILICART_PRO_ACTIVE ) {
+            $position = get_option('affilicart_cart_position');
+            $is_divi = function_exists('et_setup_theme') || defined('ET_BUILDER_PLUGIN_VERSION');
+            
+            // Ensure position is valid, default to bottom-right
+            $valid_positions = array('top-left', 'top-right', 'bottom-left', 'bottom-right');
+            if ($is_divi) {
+                $valid_positions[] = 'divi-menu';
+            }
+            if (empty($position) || !in_array($position, $valid_positions)) {
+                $position = $is_divi ? 'divi-menu' : 'bottom-right';
+            }
+            
+            $positions = array(
+                'top-left' => 'Top Left',
+                'top-right' => 'Top Right',
+                'bottom-left' => 'Bottom Left',
+                'bottom-right' => 'Bottom Right'
+            );
+            
+            if ($is_divi) {
+                $positions['divi-menu'] = 'Divi Menu (alongside search icon)';
+            }
+            
+            echo '<div style="display: flex; flex-direction: column; gap: 8px;">';
+            foreach ($positions as $value => $label) {
+                echo '<label style="display: flex; align-items: center; gap: 8px; margin: 0;">';
+                echo '<input type="radio" name="affilicart_cart_position" value="' . esc_attr($value) . '" ' . checked($position, $value, false) . '>';
+                echo esc_html($label);
+                echo '</label>';
+            }
+            echo '</div>';
+            echo '<p class="description">Choose where the shopping cart icon should appear. ' . ($is_divi ? 'Divi theme users can display in the Divi menu.' : '') . '</p>';
+        } else {
+            echo '<div style="padding: 10px; background: #e7f3ff; border-left: 4px solid #2196F3; border-radius: 3px;">';
+            echo '<strong>🔒 ' . esc_html__( 'Premium Feature', 'affilicart' ) . '</strong><br>';
+            echo esc_html__( 'Customize your cart position with Affilicart Pro. ', 'affilicart' );
+            echo '<a href="' . esc_url( add_query_arg( array( 'post_type' => 'amazon_product', 'page' => 'affilicart-settings', 'tab' => 'upgrade' ), admin_url( 'edit.php' ) ) ) . '" style="color: #2196F3; font-weight: bold;">' . esc_html__( 'Upgrade to Pro →', 'affilicart' ) . '</a>';
+            echo '</div>';
         }
     }, 'affilicart-settings', 'affilicart_main_section');
     add_settings_field('affilicart_lightbox', 'Image Lightbox', function() {
-        $enabled = get_option('affilicart_lightbox', true);
-        echo '<label><input type="checkbox" name="affilicart_lightbox" value="1" ' . checked($enabled, 1, false) . '> Enable lightbox effect when clicking product images</label>';
-        echo '<p class="description">When enabled, clicking a product image will open it in a fullscreen lightbox viewer.</p>';
+        if ( AFFILICART_PRO_ACTIVE ) {
+            $enabled = get_option('affilicart_lightbox', true);
+            echo '<label><input type="checkbox" name="affilicart_lightbox" value="1" ' . checked($enabled, 1, false) . '> Enable lightbox effect when clicking product images</label>';
+            echo '<p class="description">When enabled, clicking a product image on single product pages will open it in a fullscreen lightbox viewer.</p>';
+        } else {
+            echo '<div style="padding: 10px; background: #e7f3ff; border-left: 4px solid #2196F3; border-radius: 3px;">';
+            echo '<strong>🔒 ' . esc_html__( 'Premium Feature', 'affilicart' ) . '</strong><br>';
+            echo esc_html__( 'Enable image lightbox with Affilicart Pro. ', 'affilicart' );
+            echo '<a href="' . esc_url( add_query_arg( array( 'post_type' => 'amazon_product', 'page' => 'affilicart-settings', 'tab' => 'upgrade' ), admin_url( 'edit.php' ) ) ) . '" style="color: #2196F3; font-weight: bold;">' . esc_html__( 'Upgrade to Pro →', 'affilicart' ) . '</a>';
+            echo '</div>';
+        }
     }, 'affilicart-settings', 'affilicart_main_section');
 });
 
@@ -759,83 +995,124 @@ add_action( 'add_meta_boxes', function() {
 });
 function affilicart_meta_box_cb( $post ) {
     $asin = get_post_meta( $post->ID, '_affilicart_asin', true );
-    $price = get_post_meta( $post->ID, '_affilicart_price', true );
+    wp_nonce_field( 'affilicart_meta_nonce', 'affilicart_meta_nonce' );
     ?>
-    <p><label>ASIN:</label><input type="text" name="affilicart_asin" value="<?php echo esc_attr($asin); ?>" class="widefat"></p>
-    <p><label>Price ($):</label><input type="text" name="affilicart_price" value="<?php echo esc_attr($price); ?>" class="widefat"></p>
+    <p><label><?php esc_html_e( 'ASIN:', 'affilicart' ); ?></label><input type="text" name="affilicart_asin" value="<?php echo esc_attr($asin); ?>" class="widefat"></p>
     <?php
 }
+
 add_action( 'save_post', function($post_id) {
-    if ( isset( $_POST['affilicart_asin'] ) ) update_post_meta( $post_id, '_affilicart_asin', sanitize_text_field( $_POST['affilicart_asin'] ) );
-    if ( isset( $_POST['affilicart_price'] ) ) update_post_meta( $post_id, '_affilicart_price', sanitize_text_field( $_POST['affilicart_price'] ) );
+    if ( !isset( $_POST['affilicart_meta_nonce'] ) || !wp_verify_nonce( sanitize_key( $_POST['affilicart_meta_nonce'] ), 'affilicart_meta_nonce' ) ) return;
+    if ( isset( $_POST['affilicart_asin'] ) ) update_post_meta( $post_id, '_affilicart_asin', sanitize_text_field( wp_unslash( $_POST['affilicart_asin'] ) ) );
 });
 
-// 5. Enqueue & Global Logic
+// 2. Helper function to get product price (if available from Pro API)
+function affilicart_get_product_price( $product_id ) {
+    // Check if Pro is active and API is enabled
+    if ( ! defined( 'AFFILICART_PRO_VERSION' ) || ! get_option( 'affilicart_api_enabled' ) ) {
+        return false; // No API pricing available
+    }
+    
+    $price = get_post_meta( $product_id, '_affilicart_price', true );
+    $price_date = get_post_meta( $product_id, '_affilicart_price_date', true );
+    $price_source = get_post_meta( $product_id, '_affilicart_price_source', true );
+    
+    // Only return price if it came from API (not manually entered)
+    if ( $price && $price_source === 'api' && $price_date ) {
+        return array(
+            'price' => $price,
+            'date' => $price_date,
+            'source' => 'api'
+        );
+    }
+    
+    return false;
+}
+
+// 3. Enqueue & Global Logic
 add_action('wp_enqueue_scripts', function() {
-    wp_enqueue_style('bootstrap-css', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css');
-    wp_enqueue_style('bootstrap-icons', 'https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css');
-    wp_enqueue_style('affilicart-style', plugins_url('style.css', __FILE__));
-    wp_enqueue_script('bootstrap-bundle', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js', array(), null, true);
-    wp_enqueue_script('affilicart-js', plugins_url('scripts.js', __FILE__), array('jquery', 'bootstrap-bundle'), null, true);
+    // Apply filter to allow disabling CDN (default: enabled for best compatibility)
+    // Usage: add_filter( 'affilicart_use_cdn', '__return_false' ); to disable
+    $use_cdn = apply_filters( 'affilicart_use_cdn', true );
+    
+    // Bootstrap CSS - provides grid system and components
+    // Served via jsDelivr (https://www.jsdelivr.com/) - no tracking
+    // NOTE: Removed from wp_enqueue to comply with WordPress.org requirements.
+    // Bootstrap functionality replaced with local CSS.
+    // if ( $use_cdn ) {
+    //     wp_enqueue_style('bootstrap-css', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css', array(), '5.3.0');
+    // }
+    
+    // Bootstrap Icons - lightweight icon font
+    // Served via jsDelivr (https://www.jsdelivr.com/) - no tracking
+    // NOTE: Removed from wp_enqueue to comply with WordPress.org requirements.
+    // Bootstrap Icons replaced with dashicons (WordPress built-in).
+    // if ( $use_cdn ) {
+    //     wp_enqueue_style('bootstrap-icons', 'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css', array(), '1.11.0');
+    // }
+    
+    // Enqueue local styles
+    wp_enqueue_style('affilicart-style', plugins_url('style.css', __FILE__), array('dashicons'), AFFILICART_VERSION);
+    
+    // Bootstrap JS - required for cart modal functionality
+    // NOTE: Removed from wp_enqueue to comply with WordPress.org requirements.
+    // Bootstrap modal functionality replaced with vanilla JavaScript modal.
+    // if ( $use_cdn ) {
+    //     wp_enqueue_script('bootstrap-bundle', 'https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js', array(), '5.3.0', true);
+    // }
+    
+    wp_enqueue_script('affilicart-js', plugins_url('scripts.js', __FILE__), array('jquery'), AFFILICART_VERSION, true);
 
     $products = array();
     $query = new WP_Query(array('post_type' => 'amazon_product', 'posts_per_page' => -1, 'post_status' => 'publish'));
     foreach ($query->posts as $p) {
         $categories = wp_get_post_terms($p->ID, 'category', array('fields' => 'names'));
-        $tags = wp_get_post_terms($p->ID, 'post_tag', array('fields' => 'names'));
         $products[] = array(
             'id' => $p->ID, 'name' => get_the_title($p->ID),
             'slug' => $p->post_name,
             'description' => wp_trim_words(get_post_meta($p->ID, 'product_description', true), 15),
             'image' => get_the_post_thumbnail_url($p->ID, 'medium'),
             'image_full' => get_the_post_thumbnail_url($p->ID, 'full'),
-            'price' => get_post_meta($p->ID, '_affilicart_price', true),
             'asin' => get_post_meta($p->ID, '_affilicart_asin', true),
             'categories' => is_array($categories) ? $categories : array(),
-            'tags' => is_array($tags) ? $tags : array(),
         );
     }
     
-    // Determine cart display setting
+    // Determine cart position
     $is_divi = function_exists('et_setup_theme') || defined('ET_BUILDER_PLUGIN_VERSION');
-    $cart_display = get_option('affilicart_cart_display', 'auto');
-    $divi_cart_enabled = get_option('affilicart_divi_cart', false);
+    $cart_position = get_option('affilicart_cart_position');
     
-    // For backward compatibility: if old checkbox is unchecked on Divi, use floating
-    if ($is_divi && !$divi_cart_enabled && $cart_display === 'auto') {
-        $cart_display = 'floating';
+    // Validate position
+    $valid_positions = array('top-left', 'top-right', 'bottom-left', 'bottom-right');
+    if ($is_divi) {
+        $valid_positions[] = 'divi-menu';
+    }
+    if (empty($cart_position) || !in_array($cart_position, $valid_positions)) {
+        $cart_position = $is_divi ? 'divi-menu' : 'bottom-right';
     }
     
     wp_localize_script('affilicart-js', 'affilicart_data', array(
         'products' => $products,
         'associate_tag' => get_option('affilicart_associate_id', 'default-20'),
-        'accent_color' => get_option('affilicart_accent_color', '#007cba'),
+        'accent_color' => AFFILICART_PRO_ACTIVE ? get_option('affilicart_accent_color', '#0073aa') : '#0073aa',
         'lightbox_enabled' => (bool) get_option('affilicart_lightbox', true),
         'is_divi' => $is_divi,
-        'cart_display' => $cart_display,
-        'cart_position' => get_option('affilicart_cart_position', 'bottom-right')
+        'cart_position' => $cart_position,
+        'product_slug' => AFFILICART_PRO_ACTIVE ? get_option('affilicart_post_slug', 'product') : 'product',
+        'api_enabled' => AFFILICART_PRO_ACTIVE && get_option('affilicart_api_enabled'),
+        'is_pro' => AFFILICART_PRO_ACTIVE
     ));
 });
 
 // 6. Menu Icon & Modal (only add if NOT using floating cart)
 add_filter('wp_nav_menu_items', function($items) {
     $is_divi = function_exists('et_setup_theme') || defined('ET_BUILDER_PLUGIN_VERSION');
-    $cart_display = get_option('affilicart_cart_display', 'auto');
-    $divi_cart_enabled = get_option('affilicart_divi_cart', false);
+    $cart_position = get_option('affilicart_cart_position', $is_divi ? 'divi-menu' : 'bottom-right');
     
-    // For backward compatibility: if old checkbox is unchecked on Divi, use floating
-    if ($is_divi && !$divi_cart_enabled && $cart_display === 'auto') {
-        $cart_display = 'floating';
-    }
-    
-    // Resolve 'auto' to actual display type
-    if ($cart_display === 'auto') {
-        $cart_display = $is_divi ? 'menu' : 'floating';
-    }
-    
-    // For non-Divi themes, add menu item if using menu display
-    if (!$is_divi && $cart_display !== 'floating') {
-        $items .= '<li class="menu-item ac-menu-cart"><a href="#" data-bs-toggle="modal" data-bs-target="#cartModal"><i class="bi bi-cart"></i> <span id="cart-count">0</span></a></li>';
+    // For non-Divi themes, add menu item if NOT using floating positions
+    $floating_positions = array('top-left', 'top-right', 'bottom-left', 'bottom-right');
+    if (!$is_divi && !in_array($cart_position, $floating_positions)) {
+        $items .= '<li class="menu-item ac-menu-cart"><a href="#" onclick="showCartModal(); return false;"><span class="dashicons dashicons-cart"></span> <span id="cart-count">0</span></a></li>';
     }
     return $items;
 }, 10, 2);
@@ -843,25 +1120,14 @@ add_filter('wp_nav_menu_items', function($items) {
 // For Divi: inject cart into header via JavaScript (not as menu item)
 add_action('wp_footer', function() {
     $is_divi = function_exists('et_setup_theme') || defined('ET_BUILDER_PLUGIN_VERSION');
-    $cart_display = get_option('affilicart_cart_display', 'auto');
-    $divi_cart_enabled = get_option('affilicart_divi_cart', false);
+    $cart_position = get_option('affilicart_cart_position', $is_divi ? 'divi-menu' : 'bottom-right');
     
-    // For backward compatibility: if old checkbox is unchecked on Divi, use floating
-    if ($is_divi && !$divi_cart_enabled && $cart_display === 'auto') {
-        $cart_display = 'floating';
-    }
-    
-    // Resolve 'auto' to actual display type
-    if ($cart_display === 'auto') {
-        $cart_display = $is_divi ? 'menu' : 'floating';
-    }
-    
-    if ($is_divi && $cart_display === 'menu') {
+    if ($is_divi && $cart_position === 'divi-menu') {
         echo '<script>
             document.addEventListener("DOMContentLoaded", function() {
                 const navBar = document.getElementById("et-top-navigation");
                 if (navBar && !document.getElementById("ac-top-cart")) {
-                    const cartHtml = \'<div id="ac-top-cart"><a href="#" data-bs-toggle="modal" data-bs-target="#cartModal"><i class="bi bi-cart"></i> <span id="cart-count">0</span></a></div>\';
+                    const cartHtml = \'<div id="ac-top-cart"><a href="#" onclick="showCartModal(); return false;"><span class="dashicons dashicons-cart"></span> <span id="cart-count">0</span></a></div>\';
                     navBar.insertAdjacentHTML("beforeend", cartHtml);
                     
                     // Update cart count
@@ -880,20 +1146,9 @@ add_action('wp_footer', function() {
 // Add Divi cart styling using the same approach as Divi's search icon
 add_action('wp_head', function() {
     $is_divi = function_exists('et_setup_theme') || defined('ET_BUILDER_PLUGIN_VERSION');
-    $cart_display = get_option('affilicart_cart_display', 'auto');
-    $divi_cart_enabled = get_option('affilicart_divi_cart', false);
+    $cart_position = get_option('affilicart_cart_position', $is_divi ? 'divi-menu' : 'bottom-right');
     
-    // For backward compatibility: if old checkbox is unchecked on Divi, use floating
-    if ($is_divi && !$divi_cart_enabled && $cart_display === 'auto') {
-        $cart_display = 'floating';
-    }
-    
-    // Resolve 'auto' to actual display type
-    if ($cart_display === 'auto') {
-        $cart_display = $is_divi ? 'menu' : 'floating';
-    }
-    
-    if ($is_divi && $cart_display === 'menu') {
+    if ($is_divi && $cart_position === 'divi-menu') {
         echo '<style>
             @keyframes ac-shake-divi {
                 0%, 100% { transform: translateX(0); }
@@ -939,7 +1194,7 @@ add_action('wp_head', function() {
             #ac-top-cart a:hover {
                 opacity: 0.8;
             }
-            #ac-top-cart .bi-cart {
+            #ac-top-cart .dashicons-cart {
                 font-size: 16px;
             }
             #ac-top-cart #cart-count {
@@ -1004,30 +1259,28 @@ add_action('wp_head', function() {
 // Pass Divi info to JavaScript
 add_action('wp_footer', function() {
     $is_divi = function_exists('et_setup_theme') || defined('ET_BUILDER_PLUGIN_VERSION');
-    $divi_cart_enabled = get_option('affilicart_divi_cart', false);
+    $cart_position = get_option('affilicart_cart_position', $is_divi ? 'divi-menu' : 'bottom-right');
     
-    if ($is_divi && $divi_cart_enabled) {
+    if ($is_divi && $cart_position === 'divi-menu') {
         echo '<script>window.affilicart_is_divi = true;</script>';
     }
 }, 1);
 
 add_action('wp_footer', function() { ?>
-    <div class="modal fade" id="cartModal" tabindex="-1" aria-hidden="true" style="z-index: 999999;">
-        <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
-            <div class="modal-header"><h5 class="modal-title"><i class="bi bi-cart3"></i> Cart</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
-            <div class="modal-body">
-                <div id="cart-empty-alert" class="alert alert-danger" role="alert" style="display: none;">
+    <div class="ac-modal" id="cartModal" style="z-index: 999999;">
+        <div class="ac-modal-dialog"><div class="ac-modal-content">
+            <div class="ac-modal-header"><h5 class="ac-modal-title"><span class="dashicons dashicons-cart"></span> Cart</h5><button type="button" class="ac-modal-close" onclick="closeCartModal()">×</button></div>
+            <div class="ac-modal-body">
+                <div id="cart-empty-alert" class="ac-alert ac-alert-danger" role="alert" style="display: none;">
                     <strong>Cart is Empty</strong> — Add products to your cart to proceed.
                 </div>
-                <ul id="cart-items" class="list-group list-group-flush"></ul>
+                <ul id="cart-items" class="ac-list ac-list-group"></ul>
             </div>
-            <div class="modal-footer d-flex justify-content-end align-items-end pe-3">
-                <div style="text-align: right; margin-right: 20px;">
-                    <div id="grand-total" class="fw-bold fs-5">Total: $0.00</div>
-                </div>
+            <div class="ac-modal-footer">
                 <div style="text-align: right;">
-                    <button id="checkout-button" type="button" class="btn btn-success">Checkout</button>
+                    <button id="checkout-button" type="button" class="btn btn-success">Checkout on Amazon</button>
                     <p style="font-size: 12px; color: #666; margin: 8px 0 0 0;">You will be redirected to Amazon.com to complete your purchase.</p>
+                    <p style="font-size: 11px; color: #999; margin: 12px 0 0 0;">As an Amazon Associate I earn from qualifying purchases.</p>
                 </div>
             </div>
         </div></div>
@@ -1058,15 +1311,15 @@ add_shortcode('affilicart_grid', function($atts) {
     
     if ($query->have_posts()) {
         $associate_tag = get_option('affilicart_associate_id', 'default-20');
+        $custom_slug = AFFILICART_PRO_ACTIVE ? get_option('affilicart_post_slug', 'product') : 'product';
         
         while ($query->have_posts()) {
             $query->the_post();
             $product_id = get_the_ID();
             $product_slug = get_post_field('post_name', $product_id);
-            $product_url = '/product/' . $product_slug . '/';
+            $product_url = '/' . $custom_slug . '/' . $product_slug . '/';
             $thumbnail_url = get_the_post_thumbnail_url($product_id, 'medium');
             $product_title = get_the_title($product_id);
-            $price = get_post_meta($product_id, '_affilicart_price', true);
             $description = wp_trim_words(get_post_meta($product_id, 'product_description', true), 15);
             $asin = get_post_meta($product_id, '_affilicart_asin', true);
             
@@ -1074,9 +1327,13 @@ add_shortcode('affilicart_grid', function($atts) {
             $html .= '<div class="ac-product-card">';
             
             if ($a['show_image'] === 'yes' && $thumbnail_url) {
-                $html .= '<a href="' . esc_url($product_url) . '" style="text-decoration: none; color: inherit; display: block;">';
-                $html .= '<img src="' . esc_url($thumbnail_url) . '" alt="' . esc_attr($product_title) . '" class="ac-product-image">';
-                $html .= '</a>';
+                if ( AFFILICART_PRO_ACTIVE ) {
+                    $html .= '<a href="' . esc_url($product_url) . '" style="text-decoration: none; color: inherit; display: block;">';
+                    $html .= '<img src="' . esc_url($thumbnail_url) . '" alt="' . esc_attr($product_title) . '" class="ac-product-image">';
+                    $html .= '</a>';
+                } else {
+                    $html .= '<img src="' . esc_url($thumbnail_url) . '" alt="' . esc_attr($product_title) . '" class="ac-product-image" style="cursor: default;">';
+                }
             }
             
             if ($a['show_title'] === 'yes') {
@@ -1087,17 +1344,14 @@ add_shortcode('affilicart_grid', function($atts) {
                 $html .= '<p class="ac-card-text">' . esc_html($description) . '</p>';
             }
             
-            if ($a['show_price'] === 'yes' && $price) {
-                $price_display = strpos($price, '$') === 0 ? $price : '$' . $price;
-                $html .= '<div class="ac-price"><span>' . esc_html($price_display) . '</span> <i class="bi bi-info-circle" style="font-size: 12px; color: #999; cursor: help;"></i></div>';
-            }
-            
             $html .= '<button class="btn btn-primary w-100 ac-grid-btn" onclick="addToCart(' . intval($product_id) . ', false)" style="background-color: var(--ac-accent-color, #007cba); border-color: var(--ac-accent-color, #007cba);">Add to Cart</button>';
             
-            if ($a['show_amazon_link'] === 'yes' && $asin) {
+            if ($asin) {
                 $amazon_url = 'https://www.amazon.com/dp/' . esc_attr($asin) . '?tag=' . esc_attr($associate_tag);
-                $html .= '<a href="' . esc_url($amazon_url) . '" target="_blank" rel="noopener noreferrer" class="btn btn-outline-secondary w-100 mt-2" style="font-size: 12px;"><i class="bi bi-box-arrow-up-right"></i> View on Amazon</a>';
+                $html .= '<a href="' . esc_url($amazon_url) . '" target="_blank" rel="noopener noreferrer" style="display: block; text-align: center; margin-top: 12px; color: #aaa; text-decoration: none; font-size: 14px;"><span class="dashicons dashicons-external" style="display: inline; width: auto; height: auto; font-size: 14px; margin-right: 4px;"></span> View Price on Amazon</a>';
             }
+            
+            $html .= '<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee; text-align: center;"><p style="font-size: 10px; color: #999; margin: 0; line-height: 1.4; white-space: nowrap;">As an Amazon Associate I earn from qualifying purchases.</p></div>';
             
             $html .= '</div></div>';
         }
