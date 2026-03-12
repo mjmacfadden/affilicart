@@ -1,6 +1,7 @@
 <?php
 /**
  * Single Product Template for Affilicart
+ * Hybrid template system: Uses block templates for block themes, PHP for classic themes
  */
 
 // Prevent direct file access
@@ -8,10 +9,37 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
+// Detect theme type
+$is_block_theme = function_exists( 'wp_is_block_theme' ) && wp_is_block_theme();
+
+if ( $is_block_theme ) {
+    // Block Theme (Twenty Twenty-Five): Render with proper block theme structure
+    ?>
+    <!DOCTYPE html>
+    <html <?php language_attributes(); ?>>
+    <head>
+        <meta charset="<?php bloginfo( 'charset' ); ?>">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <?php wp_head(); ?>
+        <link rel="stylesheet" href="<?php echo esc_url( plugin_dir_url( AFFILICART_PLUGIN_FILE ) . 'style.css' ); ?>?v=<?php echo esc_attr( AFFILICART_VERSION ); ?>">
+    </head>
+    <body <?php body_class(); ?>>
+        <?php wp_body_open(); ?>
+        <div class="wp-site-blocks">
+            <header class="wp-block-template-part">
+                <?php echo do_blocks( '<!-- wp:template-part {"slug":"header"} /-->' ); ?>
+            </header>
+            <main id="main-content" class="wp-block-site-main">
+    <?php
+} else {
+    // Classic Theme (Divi): Use standard theme headers
+    get_header();
+    echo '<main id="main-content">';
+}
+
 // Single product pages are a Pro feature
 if ( ! defined( 'AFFILICART_PRO_VERSION' ) ) {
-    // Pro not active, redirect to shop or show message
-    get_header();
+    // Pro not active, show message
     echo '<div style="max-width: 900px; margin: 60px auto; padding: 40px; text-align: center;">';
     echo '<h1>' . esc_html__( 'Single Product Pages are a Pro Feature', 'affilicart' ) . '</h1>';
     echo '<p style="font-size: 16px; color: #666; margin: 20px 0;">';
@@ -19,11 +47,22 @@ if ( ! defined( 'AFFILICART_PRO_VERSION' ) ) {
     echo '<a href="' . esc_url( admin_url( 'admin.php?post_type=amazon_product&page=affilicart-settings&tab=upgrade' ) ) . '" style="color: #2fbdb6; font-weight: bold;">' . esc_html__( 'Upgrade to Pro →', 'affilicart' ) . '</a>';
     echo '</p>';
     echo '</div>';
-    get_footer();
+    
+    // Close main tag and exit early for non-Pro users
+    if ( $is_block_theme ) {
+        echo '</main>';
+        echo '</div>';  // Close wp-site-blocks wrapper
+        wp_footer();
+        ?>
+        </body>
+        </html>
+        <?php
+    } else {
+        echo '</main>';
+        get_footer();
+    }
     return;
 }
-
-get_header();
 
 if (have_posts()) {
     the_post();
@@ -280,55 +319,119 @@ if (have_posts()) {
     echo '<div style="max-width: 1200px; margin: 40px auto; padding: 0 20px;"><p>Product not found.</p></div>';
 }
 
-get_footer();
-
-// Share URL function
-?>
-<script>
-function affilicartCopyShareUrl(icon) {
-    const url = window.location.href;
-    
-    if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(url).then(() => {
-            showCopyNotification();
-        }).catch(err => {
-            console.error('Failed to copy:', err);
+// Close main and handle footer based on theme type
+if ( $is_block_theme ) {
+    // Block Theme: Close main, render footer, close wrapper
+    echo '</main>';
+    echo '<footer class="wp-block-template-part">';
+    echo do_blocks( '<!-- wp:template-part {"slug":"footer"} /-->' );
+    echo '</footer>';
+    echo '</div>';  // Close wp-site-blocks wrapper
+    ?>
+    <script>
+    function affilicartCopyShareUrl(icon) {
+        const url = window.location.href;
+        
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(url).then(() => {
+                showCopyNotification();
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                fallbackCopyToClipboard(url);
+            });
+        } else {
             fallbackCopyToClipboard(url);
-        });
-    } else {
-        fallbackCopyToClipboard(url);
+        }
     }
-}
 
-function showCopyNotification() {
-    const notification = document.createElement('div');
-    notification.className = 'copy-notification';
-    notification.textContent = '✓ Link copied!';
-    document.body.appendChild(notification);
-    
-    // Remove notification after animation completes
-    setTimeout(() => {
-        notification.remove();
-    }, 2000);
-}
-
-function fallbackCopyToClipboard(text) {
-    const textArea = document.createElement('textarea');
-    textArea.value = text;
-    textArea.style.position = 'fixed';
-    textArea.style.left = '-999999px';
-    document.body.appendChild(textArea);
-    
-    try {
-        textArea.select();
-        document.execCommand('copy');
-        showCopyNotification();
-    } catch (err) {
-        console.error('Fallback copy failed:', err);
-        alert('Could not copy URL. Please try again.');
-    } finally {
-        document.body.removeChild(textArea);
+    function showCopyNotification() {
+        const notification = document.createElement('div');
+        notification.className = 'copy-notification';
+        notification.textContent = '✓ Link copied!';
+        document.body.appendChild(notification);
+        
+        // Remove notification after animation completes
+        setTimeout(() => {
+            notification.remove();
+        }, 2000);
     }
+
+    function fallbackCopyToClipboard(text) {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        
+        try {
+            textArea.select();
+            document.execCommand('copy');
+            showCopyNotification();
+        } catch (err) {
+            console.error('Fallback copy failed:', err);
+            alert('Could not copy URL. Please try again.');
+        } finally {
+            document.body.removeChild(textArea);
+        }
+    }
+    </script>
+    <?php
+    wp_footer();
+    ?>
+    </body>
+    </html>
+    <?php
+} else {
+    // Classic Theme: Close main and footer
+    echo '</main>';
+    ?>
+    <script>
+    function affilicartCopyShareUrl(icon) {
+        const url = window.location.href;
+        
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(url).then(() => {
+                showCopyNotification();
+            }).catch(err => {
+                console.error('Failed to copy:', err);
+                fallbackCopyToClipboard(url);
+            });
+        } else {
+            fallbackCopyToClipboard(url);
+        }
+    }
+
+    function showCopyNotification() {
+        const notification = document.createElement('div');
+        notification.className = 'copy-notification';
+        notification.textContent = '✓ Link copied!';
+        document.body.appendChild(notification);
+        
+        // Remove notification after animation completes
+        setTimeout(() => {
+            notification.remove();
+        }, 2000);
+    }
+
+    function fallbackCopyToClipboard(text) {
+        const textArea = document.createElement('textarea');
+        textArea.value = text;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-999999px';
+        document.body.appendChild(textArea);
+        
+        try {
+            textArea.select();
+            document.execCommand('copy');
+            showCopyNotification();
+        } catch (err) {
+            console.error('Fallback copy failed:', err);
+            alert('Could not copy URL. Please try again.');
+        } finally {
+            document.body.removeChild(textArea);
+        }
+    }
+    </script>
+    <?php
+    get_footer();
 }
-</script>
-<?php
