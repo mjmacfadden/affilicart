@@ -19,6 +19,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // Define plugin constants
 define( 'AFFILICART_VERSION', '1.3' );
 define( 'AFFILICART_PRO_ACTIVE', defined( 'AFFILICART_PRO_VERSION' ) );
+define( 'AFFILICART_PLUGIN_FILE', __FILE__ );
 
 // Activation Hook - Register post types and flush rewrite rules
 register_activation_hook( __FILE__, function() {
@@ -31,6 +32,54 @@ register_activation_hook( __FILE__, function() {
         add_option( 'affilicart_accent_color', '#0073aa' );
     }
 });
+
+// Template Include Filter - Load custom templates from plugin folder for amazon_product post type and taxonomy
+add_filter( 'template_include', 'affilicart_custom_template_include', 99 );
+
+function affilicart_custom_template_include( $template ) {
+    // Check if we're viewing a single amazon_product post
+    if ( is_singular( 'amazon_product' ) ) {
+        $plugin_template = plugin_dir_path( AFFILICART_PLUGIN_FILE ) . 'templates/single-amazon_product.php';
+        if ( file_exists( $plugin_template ) ) {
+            return $plugin_template;
+        }
+    }
+    
+    // Check if we're viewing the amazon_product archive
+    if ( is_post_type_archive( 'amazon_product' ) ) {
+        $plugin_template = plugin_dir_path( AFFILICART_PLUGIN_FILE ) . 'templates/archive-amazon_product.php';
+        if ( file_exists( $plugin_template ) ) {
+            return $plugin_template;
+        }
+    }
+    
+    // Check if we're viewing the amazon_product category taxonomy archive
+    if ( is_tax( 'amazon_product_category' ) ) {
+        $plugin_template = plugin_dir_path( AFFILICART_PLUGIN_FILE ) . 'templates/taxonomy-amazon_product_category.php';
+        if ( file_exists( $plugin_template ) ) {
+            return $plugin_template;
+        }
+    }
+    
+    // Return the original template if we're not on our custom post type
+    return $template;
+}
+
+// Query Filter - Limit amazon_product_category taxonomy queries to only amazon_product posts
+add_action( 'pre_get_posts', function( $query ) {
+    if ( ! is_admin() && $query->is_main_query() ) {
+        // Check if we're on the amazon_product_category taxonomy page
+        if ( isset( $query->query_vars['taxonomy'] ) && $query->query_vars['taxonomy'] === 'amazon_product_category' ) {
+            // Explicitly set post type to ONLY amazon_product - this prevents blog posts from showing
+            $query->set( 'post_type', 'amazon_product' );
+            $query->set( 'posts_per_page', 12 );
+        }
+        // Also limit the main post archive to only amazon_product type if on the main products page
+        if ( is_post_type_archive( 'amazon_product' ) || ( isset( $query->query_vars['post_type'] ) && $query->query_vars['post_type'] === 'amazon_product' ) ) {
+            $query->set( 'post_type', 'amazon_product' );
+        }
+    }
+} );
 
 // Fix any incorrect accent color values on admin load
 add_action('admin_init', function() {
@@ -58,7 +107,12 @@ function affilicart_register_post_type() {
         'taxonomies' => array(),
         'menu_icon' => 'dashicons-cart',
         'show_in_rest' => true,
+        'rest_base' => 'amazon-products',
+        'rest_controller_class' => 'WP_REST_Posts_Controller',
         'rewrite' => array( 'slug' => $custom_slug ),
+        'has_archive' => true,
+        'template' => array(),
+        'template_lock' => false,
     );
     register_post_type( 'amazon_product', $args );
 }
@@ -90,33 +144,23 @@ add_action( 'init', function() {
     // For Pro users, allow custom slug. For free users, always use 'product'
     $custom_slug = AFFILICART_PRO_ACTIVE ? get_option( 'affilicart_post_slug', 'product' ) : 'product';
     
-    // Add rewrite rule for /product/category/category-name/
+    // Rewrite /product/category/category-name/ to the proper WordPress taxonomy URL
+    // This maps the user-friendly URL to the amazon_product_category taxonomy
     add_rewrite_rule(
         $custom_slug . '/category/([^/]+)/?$',
-        'index.php?affilicart_category=$matches[1]',
+        'index.php?amazon_product_category=$matches[1]',
         'top'
     );
-    
-    // Register query variable
-    add_filter( 'query_vars', function( $vars ) {
-        $vars[] = 'affilicart_category';
-        return $vars;
-    });
-    
-    // Handle template loading for product categories
-    add_action( 'template_redirect', function() {
-        $category = get_query_var( 'affilicart_category' );
-        
-        if ( ! empty( $category ) ) {
-            $plugin_template = plugin_dir_path( __FILE__ ) . 'archive-amazon_product.php';
-            if ( file_exists( $plugin_template ) ) {
-                // Load template and exit
-                include $plugin_template;
-                exit;
-            }
-        }
-    }, 5 );
 }, 11 );
+
+// Flush rewrite rules if needed
+add_action( 'init', function() {
+    // Check if rewrite rules need flushing (only do this once per activation)
+    if ( get_option( 'affilicart_rewrite_rules_flushed' ) !== 'yes' ) {
+        flush_rewrite_rules();
+        update_option( 'affilicart_rewrite_rules_flushed', 'yes' );
+    }
+}, 12 );
 
 // Deactivation Hook - Flush rewrite rules on deactivation
 register_deactivation_hook( __FILE__, function() {
@@ -1393,10 +1437,3 @@ add_shortcode('affilicart_links', function($atts) {
     return '<span class="ac-hover-link" data-product-id="'.esc_attr($a['id']).'" data-link-text="'.esc_attr($link_text).'"></span>';
 });
 
-// 10. Custom Single Product Template
-add_filter('template_include', function($template) {
-    if (is_singular('amazon_product')) {
-        return plugin_dir_path(__FILE__) . 'single-product.php';
-    }
-    return $template;
-});
