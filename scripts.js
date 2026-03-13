@@ -196,7 +196,7 @@
                         <div style="font-weight: 600; margin-bottom: 8px; font-size: 14px;">${product.name}</div>
                         <button class="btn btn-primary btn-sm w-100" onclick="addToCart(${product.id}, false)" style="background-color: var(--ac-accent-color, #007cba); border-color: var(--ac-accent-color, #007cba); font-size: 12px; margin-bottom: 8px;">Add to Cart</button>
                         <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee;">
-                            <a href="https://www.amazon.com/dp/${product.asin.trim()}?tag=${ASSOCIATE_TAG}" target="_blank" rel="noopener noreferrer" style="font-size: 11px; color: #666; text-decoration: none;"><span class="dashicons dashicons-external" style="display: inline; width: auto; height: auto; font-size: 11px;"></span> View Price on Amazon</a>
+                            <a href="https://www.amazon.com/dp/${product.asin.trim()}?tag=${ASSOCIATE_TAG}" target="_blank" rel="noopener noreferrer" style="font-size: 11px; color: #666; text-decoration: none;">View Price on Amazon <span class="dashicons dashicons-external" style="display: inline-block; width: auto; height: auto; font-size: 11px; line-height: 1; vertical-align: middle;"></span></a>
                             <p style="font-size: 10px; color: #999; margin: 6px 0 0 0; line-height: 1.2;">As an Amazon Associate I earn from qualifying purchases.</p>
                         </div>
                     </div>

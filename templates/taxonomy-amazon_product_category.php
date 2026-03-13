@@ -97,8 +97,8 @@ if ( have_posts() ) {
             <!-- View Price on Amazon Link -->
             <?php if ( $product_asin ) : ?>
                 <a href="<?php echo esc_url( 'https://www.amazon.com/dp/' . urlencode( $product_asin ) . '?tag=' . $associate_id ); ?>" target="_blank" rel="noopener noreferrer" style="color: #666; text-decoration: none; font-size: 13px; font-weight: 600; margin-bottom: 10px; display: inline-flex; align-items: center; gap: 4px;">
-                    <?php esc_html_e( 'View Price on Amazon', 'affilicart' ); ?>
-                    <span class="dashicons dashicons-external" style="display: inline-block; width: auto; height: auto; font-size: 11px; margin: 0;"></span>
+                    <span><?php esc_html_e( 'View Price on Amazon', 'affilicart' ); ?></span>
+                    <span class="dashicons dashicons-external" style="display: inline-block; width: auto; height: auto; font-size: 11px; line-height: 1; vertical-align: middle;"></span>
                 </a>
             <?php endif; ?>
             

@@ -39,7 +39,11 @@ if ( $is_block_theme ) {
 
 // Archive page heading and description
 echo '<div style="max-width: 1200px; margin: 40px auto; padding: 0 20px;">';
-echo '<h1>' . post_type_archive_title() . '</h1>';
+if ( get_query_var( 'affilicart_show_all' ) ) {
+    echo '<h1>' . esc_html__( 'All Products (A–Z)', 'affilicart' ) . '</h1>';
+} else {
+    echo '<h1>' . post_type_archive_title() . '</h1>';
+}
 echo '</div>';
 
 // Display products in a grid
@@ -91,8 +95,8 @@ if ( have_posts() ) {
             <!-- View Price on Amazon Link -->
             <?php if ( $product_asin ) : ?>
                 <a href="<?php echo esc_url( 'https://www.amazon.com/dp/' . urlencode( $product_asin ) . '?tag=' . $associate_id ); ?>" target="_blank" rel="noopener noreferrer" style="color: #666; text-decoration: none; font-size: 13px; font-weight: 600; margin-bottom: 10px; display: inline-flex; align-items: center; gap: 4px;">
-                    <?php esc_html_e( 'View Price on Amazon', 'affilicart' ); ?>
-                    <span class="dashicons dashicons-external" style="display: inline-block; width: auto; height: auto; font-size: 11px; margin: 0;"></span>
+                    <span><?php esc_html_e( 'View Price on Amazon', 'affilicart' ); ?></span>
+                    <span class="dashicons dashicons-external" style="display: inline-block; width: auto; height: auto; font-size: 11px; line-height: 1; vertical-align: middle;"></span>
                 </a>
             <?php endif; ?>
             
