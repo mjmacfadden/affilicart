@@ -1421,7 +1421,7 @@ add_shortcode('affilicart_grid', function($atts) {
             
             if ($asin) {
                 $amazon_url = 'https://www.amazon.com/dp/' . esc_attr($asin) . '?tag=' . esc_attr($associate_tag);
-                $html .= '<a href="' . esc_url($amazon_url) . '" target="_blank" rel="noopener noreferrer" style="display: block; text-align: center; margin-top: 12px; color: #aaa; text-decoration: none; font-size: 14px;"><span class="dashicons dashicons-external" style="display: inline; width: auto; height: auto; font-size: 14px; margin-right: 4px;"></span> View Price on Amazon</a>';
+                $html .= '<a href="' . esc_url($amazon_url) . '" target="_blank" rel="noopener noreferrer" style="display: block; text-align: center; margin-top: 12px; color: #aaa; text-decoration: none; font-size: 14px;">View Price on Amazon <span class="dashicons dashicons-external" style="display: inline-block; width: auto; height: auto; font-size: 14px; margin-left: 4px; line-height: 1; vertical-align: middle;"></span></a>';
             }
             
             $html .= '<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #eee; text-align: center;"><p style="font-size: 10px; color: #999; margin: 0; line-height: 1.4; white-space: nowrap;">As an Amazon Associate I earn from qualifying purchases.</p></div>';

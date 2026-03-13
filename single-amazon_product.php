@@ -296,8 +296,8 @@ if (have_posts()) {
                         </button>
                         <?php if ($affilicart_product_asin): ?>
                             <div style="margin-top: 12px; text-align: center; width: 100%;">
-                                <a href="<?php echo esc_url('https://www.amazon.com/dp/' . urlencode($affilicart_product_asin) . '?tag=' . get_option('affilicart_associate_id', 'default-20')); ?>" target="_blank" rel="noopener noreferrer" style="font-size: 13px; color: #666; text-decoration: none; display: inline-block;">
-                                    View on Amazon <span class="dashicons dashicons-external" style="display: inline; width: auto; height: auto; font-size: 11px;"></span>
+                                <a href="<?php echo esc_url('https://www.amazon.com/dp/' . urlencode($affilicart_product_asin) . '?tag=' . get_option('affilicart_associate_id', 'default-20')); ?>" target="_blank" rel="noopener noreferrer" style="font-size: 13px; color: #666; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                                    <span>View on Amazon</span> <span class="dashicons dashicons-external" style="display: inline-block; width: auto; height: auto; font-size: 11px; line-height: 1; vertical-align: middle;"></span>
                                 </a>
                             </div>
                         <?php endif; ?>

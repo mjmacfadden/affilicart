@@ -275,9 +275,9 @@ if ( ! defined( 'AFFILICART_PRO_VERSION' ) ) {
                             </button>
                             <?php if ( $product_asin ) : ?>
                                 <div style="margin-top: 12px; text-align: center; width: 100%;">
-                                    <a href="<?php echo esc_url( 'https://www.amazon.com/dp/' . urlencode( $product_asin ) . '?tag=' . get_option( 'affilicart_associate_id', 'default-20' ) ); ?>" target="_blank" rel="noopener noreferrer" style="font-size: 13px; color: #666; text-decoration: none; display: inline-block;">
-                                        <?php esc_html_e( 'View on Amazon', 'affilicart' ); ?>
-                                        <span class="dashicons dashicons-external" style="display: inline; width: auto; height: auto; font-size: 11px;"></span>
+                                    <a href="<?php echo esc_url( 'https://www.amazon.com/dp/' . urlencode( $product_asin ) . '?tag=' . get_option( 'affilicart_associate_id', 'default-20' ) ); ?>" target="_blank" rel="noopener noreferrer" style="font-size: 13px; color: #666; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                                        <span><?php esc_html_e( 'View on Amazon', 'affilicart' ); ?></span>
+                                        <span class="dashicons dashicons-external" style="display: inline-block; width: auto; height: auto; font-size: 11px; line-height: 1; vertical-align: middle;"></span>
                                     </a>
                                 </div>
                             <?php endif; ?>
@@ -299,25 +299,7 @@ if ( ! defined( 'AFFILICART_PRO_VERSION' ) ) {
     }
 }
 
-// Close main and container tags based on theme type
-if ( $is_block_theme ) {
-    ?>
-        </main><!-- #main-content -->
-        <?php echo $affilicart_footer_html; ?>
-    </div><!-- .wp-site-blocks -->
-    <?php wp_footer(); ?>
-</body>
-</html>
-    <?php
-} else {
-    // Classic theme closing structure
-    echo '</main>';
-    echo '</div>';
-    get_footer();
-}
-
-// JavaScript functions - only for classic themes (block themes handle scripts via blocks)
-if ( ! $is_block_theme ) {
+// JavaScript functions - output before closing tags so they work on all theme types
 ?>
 <script>
 function affilicartCopyShareUrl(icon) {
@@ -366,4 +348,21 @@ function fallbackCopyToClipboard(text) {
 }
 </script>
 <?php
-} // End of if ( ! $is_block_theme )
+
+// Close main and container tags based on theme type
+if ( $is_block_theme ) {
+    ?>
+        </main><!-- #main-content -->
+        <?php echo $affilicart_footer_html; ?>
+    </div><!-- .wp-site-blocks -->
+    <?php wp_footer(); ?>
+</body>
+</html>
+    <?php
+} else {
+    // Classic theme closing structure
+    echo '</main>';
+    echo '</div>';
+    get_footer();
+}
+
