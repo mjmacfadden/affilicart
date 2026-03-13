@@ -45,6 +45,14 @@ function affilicart_custom_template_include( $template ) {
         }
     }
     
+    // Check if we're viewing /product/category/all (all products alphabetical)
+    if ( get_query_var( 'affilicart_show_all' ) ) {
+        $plugin_template = plugin_dir_path( AFFILICART_PLUGIN_FILE ) . 'templates/archive-amazon_product.php';
+        if ( file_exists( $plugin_template ) ) {
+            return $plugin_template;
+        }
+    }
+
     // Check if we're viewing the amazon_product archive
     if ( is_post_type_archive( 'amazon_product' ) ) {
         $plugin_template = plugin_dir_path( AFFILICART_PLUGIN_FILE ) . 'templates/archive-amazon_product.php';
@@ -68,6 +76,14 @@ function affilicart_custom_template_include( $template ) {
 // Query Filter - Limit amazon_product_category taxonomy queries to only amazon_product posts
 add_action( 'pre_get_posts', function( $query ) {
     if ( ! is_admin() && $query->is_main_query() ) {
+        // Handle /product/category/all - show all products alphabetically
+        if ( $query->get( 'affilicart_show_all' ) ) {
+            $query->set( 'post_type', 'amazon_product' );
+            $query->set( 'posts_per_page', -1 );
+            $query->set( 'orderby', 'title' );
+            $query->set( 'order', 'ASC' );
+            return;
+        }
         // Check if we're on the amazon_product_category taxonomy page
         if ( isset( $query->query_vars['taxonomy'] ) && $query->query_vars['taxonomy'] === 'amazon_product_category' ) {
             // Explicitly set post type to ONLY amazon_product - this prevents blog posts from showing
@@ -139,11 +155,24 @@ function affilicart_register_taxonomies() {
 }
 add_action( 'init', 'affilicart_register_taxonomies', 11 );
 
+// Register custom query var for the "show all" alphabetical page
+add_filter( 'query_vars', function( $vars ) {
+    $vars[] = 'affilicart_show_all';
+    return $vars;
+} );
+
 // Add custom rewrite rule for product category archives (/product/category/category-name/)
 add_action( 'init', function() {
     // For Pro users, allow custom slug. For free users, always use 'product'
     $custom_slug = AFFILICART_PRO_ACTIVE ? get_option( 'affilicart_post_slug', 'product' ) : 'product';
     
+    // Rewrite /product/category/all/ to the all-products alphabetical view (must come before the general rule)
+    add_rewrite_rule(
+        $custom_slug . '/category/all/?$',
+        'index.php?post_type=amazon_product&affilicart_show_all=1',
+        'top'
+    );
+
     // Rewrite /product/category/category-name/ to the proper WordPress taxonomy URL
     // This maps the user-friendly URL to the amazon_product_category taxonomy
     add_rewrite_rule(
@@ -156,9 +185,9 @@ add_action( 'init', function() {
 // Flush rewrite rules if needed
 add_action( 'init', function() {
     // Check if rewrite rules need flushing (only do this once per activation)
-    if ( get_option( 'affilicart_rewrite_rules_flushed' ) !== 'yes' ) {
+    if ( get_option( 'affilicart_rewrite_rules_flushed' ) !== '2' ) {
         flush_rewrite_rules();
-        update_option( 'affilicart_rewrite_rules_flushed', 'yes' );
+        update_option( 'affilicart_rewrite_rules_flushed', '2' );
     }
 }, 12 );
 
