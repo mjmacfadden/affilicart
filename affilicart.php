@@ -946,6 +946,20 @@ add_action('admin_init', function() {
         echo '<input type="text" name="affilicart_associate_id" value="' . esc_attr($id) . '" class="regular-text">';
         echo '<p class="description">Enter your Amazon Associates tracking ID here.</p>';
     }, 'affilicart-settings', 'affilicart_main_section');
+    add_settings_field('affilicart_autotag_enabled', 'Auto-Tag Amazon Links', function() {
+        if ( AFFILICART_PRO_ACTIVE ) {
+            echo '<div style="padding: 10px; background: #d4edda; border-left: 4px solid #28a745; border-radius: 3px;">';
+            echo '<strong>✓ ' . esc_html__( 'Enabled', 'affilicart' ) . '</strong><br>';
+            echo esc_html__( 'Automatically tagging Amazon links with your affiliate ID.', 'affilicart' );
+            echo '</div>';
+        } else {
+            echo '<div style="padding: 10px; background: #e7f3ff; border-left: 4px solid #2196F3; border-radius: 3px;">';
+            echo '<strong>🔒 ' . esc_html__( 'Premium Feature', 'affilicart' ) . '</strong><br>';
+            echo esc_html__( 'Automatically tag Amazon links with Affilicart Pro. ', 'affilicart' );
+            echo '<a href="' . esc_url( add_query_arg( array( 'post_type' => 'amazon_product', 'page' => 'affilicart-settings', 'tab' => 'upgrade' ), admin_url( 'edit.php' ) ) ) . '" style="color: #2196F3; font-weight: bold;">' . esc_html__( 'Upgrade to Pro →', 'affilicart' ) . '</a>';
+            echo '</div>';
+        }
+    }, 'affilicart-settings', 'affilicart_main_section');
     add_settings_field('affilicart_post_slug', 'Product URL Slug', function() {
         if ( AFFILICART_PRO_ACTIVE ) {
             $slug = get_option('affilicart_post_slug', 'product');
@@ -1495,6 +1509,11 @@ function affilicart_is_amazon_url( $url ) {
  */
 add_action( 'the_content', 'affilicart_auto_tag_links', 10 );
 function affilicart_auto_tag_links( $content ) {
+    // Check if Pro is active (auto-tagging is a Pro feature)
+    if ( ! AFFILICART_PRO_ACTIVE ) {
+        return $content;
+    }
+    
     $affid = get_option( 'affilicart_associate_id' );
     
     // Only proceed if an affiliate ID is set
