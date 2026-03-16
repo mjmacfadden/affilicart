@@ -1466,3 +1466,66 @@ add_shortcode('affilicart_links', function($atts) {
     return '<span class="ac-hover-link" data-product-id="'.esc_attr($a['id']).'" data-link-text="'.esc_attr($link_text).'"></span>';
 });
 
+// Auto-Tagger: Integrated from auto-tagger-for-amazon plugin
+// This functionality automatically adds your Amazon Associate ID to all Amazon links in content
+
+/**
+ * Check if a URL is an Amazon link (includes various Amazon domains and shortened URLs)
+ */
+function affilicart_is_amazon_url( $url ) {
+    $amazon_patterns = array(
+        'amazon\.',           // amazon.com, amazon.co.uk, etc.
+        'a\.co',              // Amazon shortened URLs (a.co)
+        'amzn\.to',           // Other Amazon shorteners
+        'amazon-adsystem',    // Amazon ad system links
+    );
+    
+    foreach ( $amazon_patterns as $pattern ) {
+        if ( preg_match( '/' . $pattern . '/i', $url ) ) {
+            return true;
+        }
+    }
+    
+    return false;
+}
+
+/**
+ * Automatically tag Amazon links in content with affiliate ID
+ * This hook runs on all front-end content and adds the associate ID to any Amazon links that don't already have a tag parameter
+ */
+add_action( 'the_content', 'affilicart_auto_tag_links', 10 );
+function affilicart_auto_tag_links( $content ) {
+    $affid = get_option( 'affilicart_associate_id' );
+    
+    // Only proceed if an affiliate ID is set
+    if ( empty( $affid ) ) {
+        return $content;
+    }
+    
+    // Regex to find all anchor tags and their href attributes
+    $pattern = '/<a\s+([^>]*?\s+)?href=["\']([^"\']+)["\']([^>]*)>/i';
+    
+    $content = preg_replace_callback(
+        $pattern,
+        function( $matches ) use ( $affid ) {
+            $before_href = $matches[1] ? $matches[1] : '';
+            $url = $matches[2];
+            $after_href = $matches[3] ? $matches[3] : '';
+            
+            // Check if URL is an Amazon link
+            if ( affilicart_is_amazon_url( $url ) ) {
+                // Add affiliate tag if not already present
+                if ( strpos( $url, 'tag=' ) === false ) {
+                    $separator = ( strpos( $url, '?' ) !== false ) ? '&' : '?';
+                    $url .= $separator . 'tag=' . urlencode( $affid );
+                }
+            }
+            
+            return '<a ' . $before_href . 'href="' . esc_url( $url ) . '"' . $after_href . '>';
+        },
+        $content
+    );
+    
+    return $content;
+}
+
