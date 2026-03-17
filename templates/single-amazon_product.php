@@ -10,9 +10,9 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Detect if this is a block theme
-$is_block_theme = function_exists( 'wp_is_block_theme' ) && wp_is_block_theme();
+$affilicart_is_block_theme = function_exists( 'wp_is_block_theme' ) && wp_is_block_theme();
 
-if ( $is_block_theme ) {
+if ( $affilicart_is_block_theme ) {
     // Pre-render header and footer BEFORE wp_head() so their block assets
     // (navigation scripts/styles, etc.) are enqueued in time to appear in <head>.
     $affilicart_header_html = do_blocks( '<!-- wp:template-part {"slug":"header"} /-->' );
@@ -27,7 +27,7 @@ if ( $is_block_theme ) {
 <body <?php body_class(); ?>>
     <?php wp_body_open(); ?>
     <div class="wp-site-blocks">
-        <?php echo $affilicart_header_html; ?>
+        <?php echo wp_kses_post( $affilicart_header_html ); ?>
         <main id="main-content">
     <?php
 } else {
@@ -55,17 +55,17 @@ if ( ! defined( 'AFFILICART_PRO_VERSION' ) ) {
     // Pro feature - display product
     if ( have_posts() ) {
         the_post();
-        $product_id = get_the_ID();
-        $product_title = get_the_title();
-        $product_image = get_the_post_thumbnail_url( $product_id, 'large' );
-        $product_description = get_post_meta( $product_id, 'product_description', true );
-        $product_asin = get_post_meta( $product_id, '_affilicart_asin', true );
-        $product_slug = get_option( 'affilicart_post_slug', 'product' );
+        $affilicart_product_id = get_the_ID();
+        $affilicart_product_title = get_the_title();
+        $affilicart_product_image = get_the_post_thumbnail_url( $affilicart_product_id, 'large' );
+        $affilicart_product_description = get_post_meta( $affilicart_product_id, 'product_description', true );
+        $affilicart_product_asin = get_post_meta( $affilicart_product_id, '_affilicart_asin', true );
+        $affilicart_product_slug = get_option( 'affilicart_post_slug', 'product' );
         
         // Retrieve categories using wp_get_post_terms for better reliability
-        $product_categories = wp_get_post_terms( $product_id, 'amazon_product_category', array( 'fields' => 'all' ) );
-        if ( is_wp_error( $product_categories ) ) {
-            $product_categories = array();
+        $affilicart_product_categories = wp_get_post_terms( $affilicart_product_id, 'amazon_product_category', array( 'fields' => 'all' ) );
+        if ( is_wp_error( $affilicart_product_categories ) ) {
+            $affilicart_product_categories = array();
         }
         ?>
         <div class="affilicart-single-product" id="ac-single-product">
@@ -222,8 +222,8 @@ if ( ! defined( 'AFFILICART_PRO_VERSION' ) ) {
             <div class="product-container">
                 <!-- Product Image (Left) -->
                 <div class="product-image-container">
-                    <?php if ( $product_image ) : ?>
-                        <img src="<?php echo esc_url( $product_image ); ?>" alt="<?php echo esc_attr( $product_title ); ?>" class="product-image" id="product-image-<?php echo esc_attr( $product_id ); ?>" style="cursor: pointer" />
+                    <?php if ( $affilicart_product_image ) : ?>
+                        <img src="<?php echo esc_url( $affilicart_product_image ); ?>" alt="<?php echo esc_attr( $affilicart_product_title ); ?>" class="product-image" id="product-image-<?php echo esc_attr( $affilicart_product_id ); ?>" style="cursor: pointer" />
                     <?php else : ?>
                         <div style="width: 100%; max-width: 500px; height: 500px; background: #f0f0f0; border-radius: 8px; display: flex; align-items: center; justify-content: center;">
                             <p><?php esc_html_e( 'No image available', 'affilicart' ); ?></p>
@@ -234,7 +234,7 @@ if ( ! defined( 'AFFILICART_PRO_VERSION' ) ) {
                 <!-- Product Details (Right) -->
                 <div class="product-details">
                     <div class="product-title-wrapper">
-                        <h1 class="product-title"><?php echo esc_html( $product_title ); ?></h1>
+                        <h1 class="product-title"><?php echo esc_html( $affilicart_product_title ); ?></h1>
                         <span class="dashicons dashicons-share" style="cursor: pointer" onclick="affilicartCopyShareUrl(this)" title="<?php esc_attr_e( 'Copy product URL to clipboard', 'affilicart' ); ?>"></span>
                     </div>
 
@@ -244,38 +244,38 @@ if ( ! defined( 'AFFILICART_PRO_VERSION' ) ) {
                         </p>
                     </div>
 
-                    <?php if ( $product_asin ) : ?>
+                    <?php if ( $affilicart_product_asin ) : ?>
                         <div style="margin: 20px 0; margin-left: 0">
-                            <a href="<?php echo esc_url( 'https://www.amazon.com/dp/' . urlencode( $product_asin ) . '?tag=' . get_option( 'affilicart_associate_id', 'default-20' ) ); ?>" target="_blank" rel="noopener noreferrer" style="color: var(--ac-accent-color, #0073aa); text-decoration: none; font-size: 28px; font-weight: 600; display: inline-block;">
+                            <a href="<?php echo esc_url( 'https://www.amazon.com/dp/' . urlencode( $affilicart_product_asin ) . '?tag=' . get_option( 'affilicart_associate_id', 'default-20' ) ); ?>" target="_blank" rel="noopener noreferrer" style="color: var(--ac-accent-color, #0073aa); text-decoration: none; font-size: 28px; font-weight: 600; display: inline-block;">
                                 <?php esc_html_e( 'View Price on Amazon', 'affilicart' ); ?>
                             </a>
                         </div>
                     <?php endif; ?>
 
-                    <?php if ( ! empty( $product_categories ) ) : ?>
+                    <?php if ( ! empty( $affilicart_product_categories ) ) : ?>
                         <div style="display: flex; gap: 6px; flex-wrap: wrap; margin: 20px 0;">
-                            <?php foreach ( $product_categories as $category ) : ?>
-                                <a href="<?php echo esc_url( home_url( '/' . $product_slug . '/category/' . $category->slug . '/' ) ); ?>" style="display: inline-block; padding: 0 10px; background: #f0f0f0; border-radius: 16px; font-size: 11px; color: #333; text-decoration: none; border: 1px solid #ddd; transition: all 0.2s ease;">
-                                    <?php echo esc_html( $category->name ); ?>
+                            <?php foreach ( $affilicart_product_categories as $affilicart_category ) : ?>
+                                <a href="<?php echo esc_url( home_url( '/' . $affilicart_product_slug . '/category/' . $affilicart_category->slug . '/' ) ); ?>" style="display: inline-block; padding: 0 10px; background: #f0f0f0; border-radius: 16px; font-size: 11px; color: #333; text-decoration: none; border: 1px solid #ddd; transition: all 0.2s ease;">
+                                    <?php echo esc_html( $affilicart_category->name ); ?>
                                 </a>
                             <?php endforeach; ?>
                         </div>
                     <?php endif; ?>
 
-                    <?php if ( $product_description ) : ?>
+                    <?php if ( $affilicart_product_description ) : ?>
                         <div class="product-description">
-                            <?php echo wp_kses_post( nl2br( $product_description ) ); ?>
+                            <?php echo wp_kses_post( nl2br( $affilicart_product_description ) ); ?>
                         </div>
                     <?php endif; ?>
 
                     <div class="product-actions">
                         <div style="display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 200px;">
-                            <button class="btn-add-to-cart" onclick="addToCart(<?php echo esc_js( $product_id ); ?>, false); this.textContent = '<?php esc_attr_e( 'Added to Cart', 'affilicart' ); ?>'; this.classList.add('added'); setTimeout(() => { this.textContent = '<?php esc_attr_e( 'Add to Cart', 'affilicart' ); ?>'; this.classList.remove('added'); }, 2000);">
+                            <button class="btn-add-to-cart" onclick="addToCart(<?php echo esc_js( $affilicart_product_id ); ?>, false); this.textContent = '<?php esc_attr_e( 'Added to Cart', 'affilicart' ); ?>'; this.classList.add('added'); setTimeout(() => { this.textContent = '<?php esc_attr_e( 'Add to Cart', 'affilicart' ); ?>'; this.classList.remove('added'); }, 2000);">
                                 <?php esc_html_e( 'Add to Cart', 'affilicart' ); ?>
                             </button>
-                            <?php if ( $product_asin ) : ?>
+                            <?php if ( $affilicart_product_asin ) : ?>
                                 <div style="margin-top: 12px; text-align: center; width: 100%;">
-                                    <a href="<?php echo esc_url( 'https://www.amazon.com/dp/' . urlencode( $product_asin ) . '?tag=' . get_option( 'affilicart_associate_id', 'default-20' ) ); ?>" target="_blank" rel="noopener noreferrer" style="font-size: 13px; color: #666; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                                    <a href="<?php echo esc_url( 'https://www.amazon.com/dp/' . urlencode( $affilicart_product_asin ) . '?tag=' . get_option( 'affilicart_associate_id', 'default-20' ) ); ?>" target="_blank" rel="noopener noreferrer" style="font-size: 13px; color: #666; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
                                         <span><?php esc_html_e( 'View on Amazon', 'affilicart' ); ?></span>
                                         <span class="dashicons dashicons-external" style="display: inline-block; width: auto; height: auto; font-size: 11px; line-height: 1; vertical-align: middle;"></span>
                                     </a>
@@ -350,10 +350,10 @@ function fallbackCopyToClipboard(text) {
 <?php
 
 // Close main and container tags based on theme type
-if ( $is_block_theme ) {
+if ( $affilicart_is_block_theme ) {
     ?>
         </main><!-- #main-content -->
-        <?php echo $affilicart_footer_html; ?>
+        <?php echo wp_kses_post( $affilicart_footer_html ); ?>
     </div><!-- .wp-site-blocks -->
     <?php wp_footer(); ?>
 </body>
