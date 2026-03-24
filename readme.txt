@@ -1,5 +1,5 @@
 === Affilicart Light ===
-Contributors: michaelmacfadden
+Contributors: mmacfadden, michaelmacfadden
 Author: Michael Macfadden
 Author URI: https://mmacfadden.com
 Plugin URI: https://affilicartpro.com
@@ -10,7 +10,7 @@ Requires PHP: 7.4
 Stable tag: 1.3
 License: GPL v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
-Text Domain: affilicart
+Text Domain: affilicart-light
 Domain Path: /languages
 
 A simple Amazon Affiliate product manager with shopping cart. Add unlimited products and build your affiliate store with ease.
@@ -32,16 +32,13 @@ Affilicart Light is a lightweight WordPress plugin that makes it easy to create 
 
 = Pro Version Adds =
 
-* **Amazon Price Sync** - Real-time pricing via Amazon Product Advertising API
 * **Product Categories** - Organize by topic
 * **Single Product Pages** - Dedicated product detail pages with lightbox image viewer
 * **Image Lightbox** - Fullscreen image viewer with high-resolution images
 * **Custom Branding** - Personalized accent colors and cart display options
 * **Priority Support** - Faster response times
+* **Amazon Price Sync (Beta)** - Real-time pricing via Amazon Product Advertising API
 
-== External Dependencies ==
-
-This plugin uses the following external services and CDN resources:
 == External Dependencies ==
 
 This plugin uses the following external services:
@@ -74,7 +71,7 @@ Affilicart Pro can sync real-time prices from Amazon:
 - Affiliate cate must be registered for Product Advertising API
 - Valid AWS credentials (Access Key ID and Secret)
 - API subscription confirmed with Amazon
-
+account
 **What happens:**
 - When enabled: Product prices update automatically every 24 hours
 - When disabled: Prices are NOT displayed (only "View on Amazon" link shown)
@@ -260,55 +257,6 @@ See: https://www.gnu.org/licenses/gpl-2.0.html
 
 Want to contribute? Visit: https://affilicartpro.com
 
-== Frequently Asked Questions ==
-
-= Do I need an Amazon Associates account? =
-
-Yes, you need an active Amazon Associates account to use this plugin. Sign up for free at [amazon.com/associates](https://amazon.com/associates).
-
-= How do I add my Amazon Associates ID? =
-
-Go to **Products > Settings** and enter your Amazon Associates tracking ID (Associate Tag) in the "Amazon Associate ID" field.
-
-= How do I display products on my site? =
-
-Use the shortcodes provided:
-* `[affilicart_grid]` for a grid layout
-* `[affilicart_button]` for button layout
-* `[affilicart_link id="123"]` for a text link with hover card
-
-= Is there a product limit? =
-
-No! Affilicart Light allows unlimited products. Add as many as you want.
-
-= How do affiliate links work? =
-
-When you add your Amazon Associates ID in the settings, all product links will include your tracking ID. When visitors click the links and purchase on Amazon, you earn a commission.
-
-= Will my affiliate links work? =
-
-Yes, as long as you have a valid Amazon Associates account and your tracking ID is entered in the plugin settings. Make sure your Associates account status is "Active".
-
-= Can I customize the look and feel? =
-
-In the free version, you can customize basic settings. With Affilicart Pro, you unlock custom accent colors to match your brand perfectly.
-
-= What is a shopping cart? =
-
-The shopping cart allows customers to add products they're interested in and review them before clicking through to Amazon. When they're ready, they can proceed to Amazon to complete their purchase.
-
-= Can I organize products into categories? =
-
-Yes! Upgrade to Affilicart Pro to unlock product categories, which let you organize your store by topic and help customers browse more easily.
-
-= What is the single product page feature in Pro? =
-
-Single product pages give each of your products a dedicated page with full details, larger images, and a prominent "Buy Now" button. This helps increase conversions.
-
-= How do I get Affilicart Pro? =
-
-Visit the Affilicart website or upgrade directly from the plugin settings page. Pro is installed as a separate plugin that works alongside the free version.
-
 == Screenshots ==
 
 1. Product Management Dashboard
@@ -345,15 +293,7 @@ Visit the Affilicart website or upgrade directly from the plugin settings page. 
 
 == Support ==
 
-For support, documentation, and more information, visit [affilicartwp.com](https://affilicartwp.com)
-
-== License ==
-
-This plugin is licensed under the GPL v2 or later. See the LICENSE file for details.
-
-== Credits ==
-
-Developed by Michael Macfadden
+For support, documentation, and more information, visit https://affilicartpro.com
 
 == Third Party Services ==
 

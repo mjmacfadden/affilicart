@@ -7,26 +7,42 @@
     // 1. Get dynamic data from WordPress Settings
     const products = affilicart_data.products;
     const ASSOCIATE_TAG = affilicart_data.associate_tag;
-    const ACCENT_COLOR = affilicart_data.accent_color;
     const LIGHTBOX_ENABLED = affilicart_data.is_pro && affilicart_data.lightbox_enabled;
     let cart = JSON.parse(localStorage.getItem('ac_cart')) || [];
 
-    // Set the CSS custom property for accent color
-    document.documentElement.style.setProperty('--ac-accent-color', ACCENT_COLOR);
+    // Function to get accent color dynamically (Pro plugin can update this)
+    function getAccentColor() {
+        return (window.affilicart_data && window.affilicart_data.accent_color) || '#0073aa';
+    }
+
+    // Set the CSS custom property for accent color dynamically
+    function updateAccentColor() {
+        const color = getAccentColor();
+        document.documentElement.style.setProperty('--ac-accent-color', color);
+    }
+    updateAccentColor();
 
     // Style checkout button with accent color
-    const style = document.createElement('style');
-    style.textContent = `
-        #checkout-button {
-            background-color: var(--ac-accent-color, #007cba) !important;
-            border-color: var(--ac-accent-color, #007cba) !important;
-        }
-        #checkout-button:hover {
-            background-color: ${ACCENT_COLOR}dd !important;
-            border-color: ${ACCENT_COLOR}dd !important;
-        }
-    `;
-    document.head.appendChild(style);
+    function updateCheckoutButtonStyle() {
+        const color = getAccentColor();
+        let styleEl = document.getElementById('ac-button-style');
+        if (styleEl) styleEl.remove();
+        
+        const style = document.createElement('style');
+        style.id = 'ac-button-style';
+        style.textContent = `
+            #checkout-button {
+                background-color: ${color} !important;
+                border-color: ${color} !important;
+            }
+            #checkout-button:hover {
+                background-color: ${color}dd !important;
+                border-color: ${color}dd !important;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    updateCheckoutButtonStyle();
 
     // Lightbox function for product images
     window.openImageLightbox = function(imageSrc, imageAlt) {
@@ -260,6 +276,8 @@
             cartModal.classList.add('show');
             document.body.style.overflow = 'hidden';
         }
+        updateAccentColor();
+        updateCheckoutButtonStyle();
     };
 
     window.closeCartModal = function() {
@@ -622,7 +640,14 @@
     };
     
     // Run on DOMContentLoaded
-    document.addEventListener('DOMContentLoaded', initAffiliCart);
+    document.addEventListener('DOMContentLoaded', function() {
+        initAffiliCart();
+        // Re-update accent color after Pro plugin merges data
+        setTimeout(function() {
+            updateAccentColor();
+            updateCheckoutButtonStyle();
+        }, 100);
+    });
     
     // Also run on load event to catch cases where DOMContentLoaded already fired
     window.addEventListener('load', () => {
