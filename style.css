@@ -75,6 +75,7 @@ html {
     transition: all 0.3s ease;
     width: fit-content;
     height: fit-content;
+    display: none !important; /* Hidden by default, Pro plugin shows it */
 }
 
 #ac-floating-cart a {
@@ -102,6 +103,35 @@ html {
 
 #ac-floating-cart i.ac-shake {
     animation: shake 0.5s ease-in-out;
+}
+
+/* Cart position classes */
+#ac-floating-cart.ac-top-left {
+    top: 30px !important;
+    left: 30px !important;
+    bottom: auto !important;
+    right: auto !important;
+}
+
+#ac-floating-cart.ac-top-right {
+    top: 30px !important;
+    right: 30px !important;
+    bottom: auto !important;
+    left: auto !important;
+}
+
+#ac-floating-cart.ac-bottom-left {
+    bottom: 30px !important;
+    left: 30px !important;
+    top: auto !important;
+    right: auto !important;
+}
+
+#ac-floating-cart.ac-bottom-right {
+    bottom: 30px !important;
+    right: 30px !important;
+    top: auto !important;
+    left: auto !important;
 }
 
 /* 2. Product Grid & Wrapper 

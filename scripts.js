@@ -7,26 +7,42 @@
     // 1. Get dynamic data from WordPress Settings
     const products = affilicart_data.products;
     const ASSOCIATE_TAG = affilicart_data.associate_tag;
-    const ACCENT_COLOR = affilicart_data.accent_color;
     const LIGHTBOX_ENABLED = affilicart_data.is_pro && affilicart_data.lightbox_enabled;
     let cart = JSON.parse(localStorage.getItem('ac_cart')) || [];
 
-    // Set the CSS custom property for accent color
-    document.documentElement.style.setProperty('--ac-accent-color', ACCENT_COLOR);
+    // Function to get accent color dynamically (Pro plugin can update this)
+    function getAccentColor() {
+        return (window.affilicart_data && window.affilicart_data.accent_color) || '#0073aa';
+    }
+
+    // Set the CSS custom property for accent color dynamically
+    function updateAccentColor() {
+        const color = getAccentColor();
+        document.documentElement.style.setProperty('--ac-accent-color', color);
+    }
+    updateAccentColor();
 
     // Style checkout button with accent color
-    const style = document.createElement('style');
-    style.textContent = `
-        #checkout-button {
-            background-color: var(--ac-accent-color, #007cba) !important;
-            border-color: var(--ac-accent-color, #007cba) !important;
-        }
-        #checkout-button:hover {
-            background-color: ${ACCENT_COLOR}dd !important;
-            border-color: ${ACCENT_COLOR}dd !important;
-        }
-    `;
-    document.head.appendChild(style);
+    function updateCheckoutButtonStyle() {
+        const color = getAccentColor();
+        let styleEl = document.getElementById('ac-button-style');
+        if (styleEl) styleEl.remove();
+        
+        const style = document.createElement('style');
+        style.id = 'ac-button-style';
+        style.textContent = `
+            #checkout-button {
+                background-color: ${color} !important;
+                border-color: ${color} !important;
+            }
+            #checkout-button:hover {
+                background-color: ${color}dd !important;
+                border-color: ${color}dd !important;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    updateCheckoutButtonStyle();
 
     // Lightbox function for product images
     window.openImageLightbox = function(imageSrc, imageAlt) {
@@ -148,11 +164,24 @@
         const product = products.find(p => p.id == productId);
 
         if (!product) {
-            buttonContainer.innerHTML = '<div class="text-muted">Product not found.</div>';
+            const msg = document.createElement('div');
+            msg.className = 'text-muted';
+            msg.textContent = 'Product not found.';
+            buttonContainer.appendChild(msg);
             return;
         }
 
-        buttonContainer.innerHTML = `<button class="btn btn-primary" onclick="addToCart(${product.id})" style="min-width: 120px; background-color: var(--ac-accent-color, #007cba); border-color: var(--ac-accent-color, #007cba);">Add to Cart</button>`;
+        buttonContainer.innerHTML = '';
+        const btn = document.createElement('button');
+        btn.className = 'btn btn-primary';
+        btn.style.minWidth = '120px';
+        btn.style.backgroundColor = 'var(--ac-accent-color, #007cba)';
+        btn.style.borderColor = 'var(--ac-accent-color, #007cba)';
+        btn.textContent = 'Add to Cart';
+        btn.addEventListener('click', function() {
+            addToCart(product.id);
+        });
+        buttonContainer.appendChild(btn);
     }
 
     // 2b. Render Hover Links
@@ -194,13 +223,31 @@
                     <div style="padding: 12px; width: 220px; text-align: center;">
                         ${imageHTML}
                         <div style="font-weight: 600; margin-bottom: 8px; font-size: 14px;">${product.name}</div>
-                        <button class="btn btn-primary btn-sm w-100" onclick="addToCart(${product.id}, false)" style="background-color: var(--ac-accent-color, #007cba); border-color: var(--ac-accent-color, #007cba); font-size: 12px; margin-bottom: 8px;">Add to Cart</button>
                         <div style="margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee;">
                             <a href="https://www.amazon.com/dp/${product.asin.trim()}?tag=${ASSOCIATE_TAG}" target="_blank" rel="noopener noreferrer" style="font-size: 11px; color: #666; text-decoration: none;">View Price on Amazon <span class="dashicons dashicons-external" style="display: inline-block; width: auto; height: auto; font-size: 11px; line-height: 1; vertical-align: middle;"></span></a>
                             <p style="font-size: 10px; color: #999; margin: 6px 0 0 0; line-height: 1.2;">As an Amazon Associate I earn from qualifying purchases.</p>
                         </div>
                     </div>
                 `;
+                const addToCartBtn = document.createElement('button');
+                addToCartBtn.className = 'btn btn-primary btn-sm w-100';
+                addToCartBtn.style.backgroundColor = 'var(--ac-accent-color, #007cba)';
+                addToCartBtn.style.borderColor = 'var(--ac-accent-color, #007cba)';
+                addToCartBtn.style.fontSize = '12px';
+                addToCartBtn.style.marginBottom = '8px';
+                addToCartBtn.textContent = 'Add to Cart';
+                addToCartBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    addToCart(product.id, false);
+                    this.textContent = 'Added to Cart';
+                    this.disabled = true;
+                    setTimeout(() => {
+                        this.textContent = 'Add to Cart';
+                        this.disabled = false;
+                    }, 2000);
+                });
+                const cardContent = card.querySelector('div');
+                cardContent.insertBefore(addToCartBtn, cardContent.querySelector('[style*="border-top"]'));
                 document.body.appendChild(card);
                 
                 // Position the card
@@ -260,6 +307,8 @@
             cartModal.classList.add('show');
             document.body.style.overflow = 'hidden';
         }
+        updateAccentColor();
+        updateCheckoutButtonStyle();
     };
 
     window.closeCartModal = function() {
@@ -487,13 +536,7 @@
         // Scroll to top on page load
         window.scrollTo(0, 0);
         
-        initGridButtons();
-        displayButton();
-        displayHoverLinks();
-        initPriceTooltips();
-        updateCart();
-
-        // Determine cart position and inject floating cart if needed
+        // Determine cart position and inject floating cart FIRST (before updateCart)
         const isDivi = affilicart_data.is_divi;
         const cartPosition = affilicart_data.cart_position || (isDivi ? 'divi-menu' : 'bottom-right');
         
@@ -530,17 +573,16 @@
                         positionStyles += ' bottom: 20px; right: 20px;';
                 }
                 
-                floatingCart.setAttribute('style', positionStyles);
-                
-                // Update the cart count after injecting
-                const cartData = JSON.parse(localStorage.getItem('ac_cart')) || [];
-                const totalQuantity = cartData.reduce((sum, item) => sum + item.quantity, 0);
-                const countElement = document.getElementById('cart-count');
-                if (countElement) {
-                    countElement.innerText = totalQuantity;
-                }
+                floatingCart.setAttribute('style', positionStyles + '; display: block !important;');
             }
         }
+        
+        // NOW initialize grid buttons and update cart (cart elements now exist)
+        initGridButtons();
+        displayButton();
+        displayHoverLinks();
+        initPriceTooltips();
+        updateCart();
 
         // Sync search input styling with header for Divi theme customizer changes
         if (window.affilicart_is_divi) {
@@ -589,9 +631,9 @@
                 }
                 let url = 'https://www.amazon.com/gp/aws/cart/add.html?';
                 cart.forEach((item, i) => {
-                    url += `ASIN.${i + 1}=${item.asin.trim()}&Quantity.${i + 1}=${item.quantity}&`;
+                    url += `ASIN.${i + 1}=${encodeURIComponent(item.asin.trim())}&Quantity.${i + 1}=${encodeURIComponent(String(item.quantity))}&`;
                 });
-                url += `AssociateTag=${ASSOCIATE_TAG}`;
+                url += `AssociateTag=${encodeURIComponent(ASSOCIATE_TAG)}`;
                 checkoutOnAmazon(url);
             });
         }
@@ -622,7 +664,14 @@
     };
     
     // Run on DOMContentLoaded
-    document.addEventListener('DOMContentLoaded', initAffiliCart);
+    document.addEventListener('DOMContentLoaded', function() {
+        initAffiliCart();
+        // Re-update accent color after Pro plugin merges data
+        setTimeout(function() {
+            updateAccentColor();
+            updateCheckoutButtonStyle();
+        }, 100);
+    });
     
     // Also run on load event to catch cases where DOMContentLoaded already fired
     window.addEventListener('load', () => {
