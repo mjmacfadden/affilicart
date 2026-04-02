@@ -1,5 +1,5 @@
 === Affilicart Light ===
-Contributors: mmacfadden, michaelmacfadden
+Contributors: mmacfadden
 Author: Michael Macfadden
 Author URI: https://mmacfadden.com
 Plugin URI: https://affilicartpro.com
@@ -7,7 +7,7 @@ Tags: amazon, affiliate, shopping cart, ecommerce, monetization
 Requires at least: 5.0
 Tested up to: 6.9
 Requires PHP: 7.4
-Stable tag: 1.3
+Stable tag: 1.0
 License: GPL v2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 Text Domain: affilicart-light
@@ -68,7 +68,7 @@ User browsing data is NOT tracked or collected by Affilicart. UI components use 
 Affilicart Pro can sync real-time prices from Amazon:
 
 **Requirements:**
-- Affiliate cate must be registered for Product Advertising API
+- Affiliate account must be registered for Product Advertising API
 - Valid AWS credentials (Access Key ID and Secret)
 - API subscription confirmed with Amazon
 account
@@ -119,7 +119,7 @@ Shopping carts are stored in browser localStorage only.
 = How is the freemium model used? =
 
 Affilicart follows a clear freemium model:
-- **Free:** Basic affiliate store with manual pricing/no API
+- **Free:** Basic affiliate store with no pricing/no API
 - **Pro:** Real-time Amazon price syncing and advanced features
 
 Free version is fully functional independently.
@@ -127,7 +127,6 @@ Free version is fully functional independently.
 = Do you phone home? =
 
 No. This plugin does not send any data to external servers except:
-- jsDelivr for CSS/JS/Icons (standard CDN use)
 - Amazon when users click affiliate links (required for tracking)
 
 = Is this GDPR compliant? =
@@ -158,38 +157,15 @@ Use these shortcodes to display your products on the frontend:
 
 = Amazon Associates Requirement =
 
-== Screenshots ==
-
-1. Product Management Interface
-2. Add/Edit Product Screen
-3. Shopping Cart Widget
-4. Settings & Configuration Page
-5. Product Grid Display
-
 == Changelog ==
 
-= 1.3 =
-* Added complete plugin header with author and plugin URIs
-* Implemented internationalization (i18n) with translation support
-* Added API-gated pricing system (Pro feature)
-* Integrated Amazon Product Advertising API support
-* Added Price Sync tab in settings (Pro only)
-* Improved code documentation and inline comments
-* Enhanced WordPress.org compliance
-* Added version numbers to CDN resource enqueues
-* Implemented filter for managing CDN usage
-* Better security with proper nonces and escaping
-
-= 1.2 =
-* Added product categories taxonomy
-* Improved admin interface
-* Better error handling
-* Performance optimizations
-
-= 1.1 =
+= 1.0 =
 * Initial public release
-* Core affiliate product management
-* Shopping cart functionality
+* Unlimited Amazon affiliate products
+* Full shopping cart functionality
+* Mobile responsive design
+* Amazon Associates integration
+* Internationalization support
 
 == Support & Docs ==
 
@@ -234,11 +210,6 @@ See: https://amazon.com/associates (Associates Program terms)
 = Amazon Associates =
 This plugin integrates with Amazon Associates Program. You must have an active Associates account and comply with their Operating Agreement.
 
-= jsDelivr CDN =
-Bootstrap CSS, JS, and Icons are served via jsDelivr's CDN. See: https://www.jsdelivr.com
-
-Both services have no data sharing with this plugin's developer.
-
 == License ==
 
 Affilicart Light is licensed under GPL v2 or later.
@@ -250,65 +221,10 @@ See: https://www.gnu.org/licenses/gpl-2.0.html
 **Developer:** Michael Macfadden
 
 **Built with:**
-- Bootstrap (MIT License) - https://getbootstrap.com
-- Bootstrap Icons (MIT License) - https://icons.getbootstrap.com
+- WordPress (GPL) - https://wordpress.org
+- Vanilla JavaScript
+- Custom CSS
 
 == Contribution Guidelines ==
 
 Want to contribute? Visit: https://affilicartpro.com
-
-== Screenshots ==
-
-1. Product Management Dashboard
-2. Add/Edit Product Screen
-3. Product Grid Display
-4. Shopping Cart Widget
-5. Settings Page
-6. Product Categories (Pro)
-
-== Changelog ==
-
-= 1.3 =
-* Changed to unlimited free tier model
-* Made product categories a Pro feature
-* Made custom accent color a Pro feature
-* Made cart display options a Pro feature
-* Made single product pages a Pro feature
-* Made image lightbox a Pro feature
-* Removed product limit enforcement
-* Improved settings UI with premium feature callouts
-* Enhanced Pro value proposition
-
-= 1.2 =
-* Added product categories feature
-* Improved product admin interface
-* Better error handling
-* Performance optimizations
-
-= 1.1 =
-* Initial public release
-* Basic product management
-* Shopping cart functionality
-* Amazon affiliate integration
-
-== Support ==
-
-For support, documentation, and more information, visit https://affilicartpro.com
-
-== Third Party Services ==
-
-This plugin relies on Amazon.com for:
-* Product affiliate links
-* Commission tracking through your Associates account
-
-By using this plugin, you agree to Amazon's Associates Program Operating Agreement.
-
-== Disclaimer ==
-
-This plugin is provided "AS IS" without warranty. Users are responsible for:
-* Maintaining an active Amazon Associates account
-* Complying with Amazon's Associates Program policies
-* Ensuring proper disclosure of affiliate relationships
-* Following FTC guidelines for affiliate marketing
-
-The developer is not responsible for lost commissions or affiliate account suspensions due to policy violations.
